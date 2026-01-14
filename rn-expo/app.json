@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "TSLExpense",
+    "slug": "android-tsl-expense",
+    "version": "0.1.0",
+    "orientation": "default",
+    "icon": "./assets/tsl_icon.png",
+    "splash": {
+      "image": "./assets/tsl_icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/tsl_icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "live.br31tech.androidtslexpense"
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
