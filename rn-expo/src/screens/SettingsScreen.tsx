@@ -15,39 +15,19 @@ const { width, height } = Dimensions.get("window");
 
 export default function SettingsScreen({ navigation }: any) {
   const [settings, setSettings] = useState(Store.getSettings());
-  const [user, setUser] = useState("");
   const [pass, setPass] = useState("");
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(Store.isAuthenticated);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
   const [exportModalVisible, setExportModalVisible] = useState(false);
   const [infoModalVisible, setInfoModalVisible] = useState(false);
 
-  const [isLoginMode, setIsLoginMode] = useState(true);
-  const [email, setEmail] = useState("");
-  const [confirmPass, setConfirmPass] = useState("");
-
-  // Hide/Show Tab Bar based on Auth State
   React.useEffect(() => {
-    navigation.setOptions({
-        tabBarStyle: {
-            display: isAuthenticated ? 'flex' : 'none',
-            position: 'absolute',
-            bottom: 5,
-            left: 20,
-            right: 20,
-            elevation: 0,
-            backgroundColor: '#ffffff',
-            borderRadius: 25,
-            height: 65,
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 5 },
-            shadowOpacity: 0.1,
-            shadowRadius: 10,
-            borderTopWidth: 0
-        }
-    });
-  }, [isAuthenticated, navigation]);
+      const unsub = Store.subscribe(() => {
+          setIsAuthenticated(Store.isAuthenticated);
+      });
+      return unsub;
+  }, []);
 
   const updateSetting = (k: string, v: string) => setSettings({ ...settings, [k]: v });
 
@@ -56,44 +36,21 @@ export default function SettingsScreen({ navigation }: any) {
     Alert.alert("Success", "Profile settings saved");
   };
 
-  const login = () => {
-    const ok = Store.users[user] === pass;
-    if (ok) {
-        setIsAuthenticated(true);
-        // Alert.alert("Login", "Authenticated");
-    }
-    else Alert.alert("Login", "Invalid credentials");
+  const logout = () => {
+      Store.setAuthenticated(false);
+      // Alert.alert("Logged Out", "You have been logged out.");
   };
 
-  const signup = () => {
-      if (!user || !pass || !email) {
-          return Alert.alert("Error", "Please fill all fields");
-      }
-      if (pass !== confirmPass) {
-          return Alert.alert("Error", "Passwords do not match");
-      }
-      
-      // Register user
-      Store.setUser(user, pass);
-      
-      // Update profile settings with signup info
-      const newSettings = { 
-          ...settings, 
-          admin_name: user, 
-          company_contact: email 
-      };
-      setSettings(newSettings);
-      Store.setSettings(newSettings);
-
-      setIsAuthenticated(true);
-      Alert.alert("Success", "Account created and logged in!");
+  const openLogin = () => {
+      // Store.setAuthModalVisible(true);
+      // No longer used since we have a dedicated Login tab
   };
 
   const changePassword = () => {
       // Simple stub for now - normally you'd want current/new/confirm
       if (!pass) return Alert.alert("Error", "Enter new password in the field above");
-      Store.setUser(user, pass);
-      Alert.alert("Success", "Password updated for " + user);
+      Store.setUser(settings.admin_name, pass);
+      Alert.alert("Success", "Password updated for " + settings.admin_name);
   };
 
   const pickLogo = async () => {
@@ -173,149 +130,11 @@ export default function SettingsScreen({ navigation }: any) {
     navigation.navigate("Backup");
   };
 
-  if (!isAuthenticated) {
-      return (
-        <View style={styles.authContainer}>
-            {/* Ambient Background Blobs */}
-            <View style={[styles.blob, { top: -100, left: -50, backgroundColor: "#4F46E5" }]} />
-            <View style={[styles.blob, { bottom: -100, right: -50, backgroundColor: "#EC4899" }]} />
-            <View style={[styles.blob, { top: height/3, left: width/2, width: 200, height: 200, backgroundColor: "#8B5CF6", opacity: 0.4 }]} />
 
-            <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
-
-            {/* Info Button */}
-            <TouchableOpacity 
-                style={{
-                    position: 'absolute',
-                    top: 50,
-                    right: 20,
-                    zIndex: 50,
-                    width: 44,
-                    height: 44,
-                    borderRadius: 22,
-                    backgroundColor: 'rgba(255,255,255,0.2)',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderWidth: 1,
-                    borderColor: 'rgba(255,255,255,0.3)'
-                }}
-                onPress={() => setInfoModalVisible(true)}
-            >
-                <Ionicons name="information" size={24} color="#fff" />
-            </TouchableOpacity>
-
-            {/* Home Button for Non-Logged Users */}
-            <TouchableOpacity 
-                style={{
-                    position: 'absolute',
-                    top: 50,
-                    left: 20,
-                    zIndex: 50,
-                    width: 44,
-                    height: 44,
-                    borderRadius: 22,
-                    backgroundColor: 'rgba(255,255,255,0.2)',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderWidth: 1,
-                    borderColor: 'rgba(255,255,255,0.3)'
-                }}
-                onPress={() => navigation.navigate("Home")}
-            >
-                <Ionicons name="home" size={24} color="#fff" />
-            </TouchableOpacity>
-
-            <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1, justifyContent: "center" }}>
-            <ScrollView 
-                contentContainerStyle={{ flexGrow: 1, justifyContent: "center", padding: 24 }}
-                showsVerticalScrollIndicator={false}
-                showsHorizontalScrollIndicator={false}
-            >
-                <View style={{ alignItems: "center", marginBottom: 50 }}>
-                    <View style={styles.logoContainer}>
-                        <Ionicons name="stats-chart" size={48} color="#fff" />
-                    </View>
-                    <Text style={styles.authTitle}>
-                        {isLoginMode ? "Welcome Back" : "Create Account"}
-                    </Text>
-                    <Text style={styles.authSubtitle}>
-                        {isLoginMode ? "Sign in to access your finance dashboard" : "Join us and manage your expenses effectively"}
-                    </Text>
-                </View>
-
-                <View style={styles.authFormCard}>
-                    <View style={styles.inputGroup}>
-                        <Ionicons name="person-outline" size={20} color="#9CA3AF" style={styles.inputIcon} />
-                        <TextInput 
-                            value={user} 
-                            onChangeText={setUser} 
-                            placeholder="Username" 
-                            placeholderTextColor="#6B7280"
-                            style={styles.modernInput} 
-                        />
-                    </View>
-
-                    {!isLoginMode && (
-                        <View style={styles.inputGroup}>
-                            <Ionicons name="mail-outline" size={20} color="#9CA3AF" style={styles.inputIcon} />
-                            <TextInput 
-                                value={email} 
-                                onChangeText={setEmail} 
-                                placeholder="Email Address" 
-                                placeholderTextColor="#6B7280"
-                                keyboardType="email-address"
-                                style={styles.modernInput} 
-                            />
-                        </View>
-                    )}
-
-                    <View style={styles.inputGroup}>
-                        <Ionicons name="lock-closed-outline" size={20} color="#9CA3AF" style={styles.inputIcon} />
-                        <TextInput 
-                            value={pass} 
-                            onChangeText={setPass} 
-                            placeholder="Password" 
-                            placeholderTextColor="#6B7280"
-                            secureTextEntry 
-                            style={styles.modernInput} 
-                        />
-                    </View>
-
-                    {!isLoginMode && (
-                        <View style={styles.inputGroup}>
-                            <Ionicons name="shield-checkmark-outline" size={20} color="#9CA3AF" style={styles.inputIcon} />
-                            <TextInput 
-                                value={confirmPass} 
-                                onChangeText={setConfirmPass} 
-                                placeholder="Confirm Password" 
-                                placeholderTextColor="#6B7280"
-                                secureTextEntry 
-                                style={styles.modernInput} 
-                            />
-                        </View>
-                    )}
-
-                    <TouchableOpacity onPress={isLoginMode ? login : signup} style={styles.gradientButton}>
-                        <Text style={styles.gradientButtonText}>{isLoginMode ? "SIGN IN" : "SIGN UP"}</Text>
-                        <Ionicons name="arrow-forward" size={20} color="#fff" />
-                    </TouchableOpacity>
-                </View>
-
-                <TouchableOpacity onPress={() => setIsLoginMode(!isLoginMode)} style={{ alignSelf: "center", marginTop: 30 }}>
-                    <Text style={styles.switchAuthText}>
-                        {isLoginMode ? "New here? " : "Already have an account? "}
-                        <Text style={{ color: "#818CF8", fontWeight: "bold" }}>{isLoginMode ? "Create Account" : "Sign In"}</Text>
-                    </Text>
-                </TouchableOpacity>
-            </ScrollView>
-            </KeyboardAvoidingView>
-        </View>
-      );
-  }
 
   return (
     <View style={{ flex: 1, backgroundColor: "#F3F4F6" }}>
-      <AppHeader title="Settings" subtitle="Preferences & Data" />
+      <AppHeader title="Settings" subtitle="App Preferences" onLogout={logout} />
       <ScrollView 
         style={{ flex: 1, padding: 20 }}
         showsVerticalScrollIndicator={false}
@@ -521,6 +340,14 @@ export default function SettingsScreen({ navigation }: any) {
       </View>
       
       <View style={{ height: 60 }} />
+
+      {isAuthenticated && (
+          <TouchableOpacity onPress={logout} style={[styles.saveButton, { backgroundColor: '#EF4444', marginTop: 10, marginBottom: 40, flexDirection: 'row', justifyContent: 'center' }]}>
+              <Text style={styles.saveButtonText}>LOG OUT</Text>
+              <Ionicons name="log-out-outline" size={20} color="#fff" style={{marginLeft: 8}} />
+          </TouchableOpacity>
+      )}
+
       </ScrollView>
 
       <InputModal

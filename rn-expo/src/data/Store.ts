@@ -65,7 +65,39 @@ const USERS_FILE = FileSystem.documentDirectory + "users.json";
 export const Store = {
   settings: { ...defaultSettings },
   users: { admin: "admin123" } as Record<string, string>,
+  isAuthenticated: false,
+  authModalVisible: false,
   listeners: [] as (() => void)[],
+
+  async setAuthenticated(status: boolean) {
+      this.isAuthenticated = status;
+      this.notify();
+      try {
+          if (Platform.OS !== 'web') {
+              const AUTH_FILE = FileSystem.documentDirectory + "auth_state.json";
+              await FileSystem.writeAsStringAsync(AUTH_FILE, JSON.stringify({ isAuthenticated: status }));
+          }
+      } catch (e) { console.log("Failed to persist auth state", e); }
+  },
+
+  setAuthModalVisible(visible: boolean) {
+      this.authModalVisible = visible;
+      this.notify();
+  },
+
+  async loadAuthState() {
+      try {
+          if (Platform.OS !== 'web') {
+              const AUTH_FILE = FileSystem.documentDirectory + "auth_state.json";
+              const info = await FileSystem.getInfoAsync(AUTH_FILE);
+              if (info.exists) {
+                  const content = await FileSystem.readAsStringAsync(AUTH_FILE);
+                  const data = JSON.parse(content);
+                  this.isAuthenticated = !!data.isAuthenticated;
+              }
+          }
+      } catch (e) { console.log("Failed to load auth state", e); }
+  },
 
   subscribe(listener: () => void) {
     this.listeners.push(listener);

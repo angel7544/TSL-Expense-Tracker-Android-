@@ -31,7 +31,7 @@ export default function ListScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: "#f8f9fa" }}>
-      <AppHeader title="All Records" subtitle="Manage your expenses" />
+      <AppHeader title="All Records" subtitle="All Records" />
       <View style={{ padding: 16, flex: 1 }}>
       <View style={{ flexDirection: "row", marginBottom: 12, alignItems: "center" }}>
         <TextInput

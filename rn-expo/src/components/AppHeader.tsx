@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { 
-  View, Text, Image, TouchableOpacity, Modal, StyleSheet, Linking, Platform, Dimensions, Alert
+  View, Text, Image, TouchableOpacity, Modal, StyleSheet, Linking, Platform, Dimensions, Alert,
+  GestureResponderEvent
 } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
@@ -171,6 +172,10 @@ export const AppHeader = ({ title, subtitle, showCreateDB = false }: { title?: s
     ]);
   };
 
+  function onLogout(event: GestureResponderEvent): void {
+    throw new Error("Function not implemented.");
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.leftRow}>
@@ -201,6 +206,11 @@ export const AppHeader = ({ title, subtitle, showCreateDB = false }: { title?: s
         <TouchableOpacity onPress={handleExport} style={styles.iconButton}>
             <Ionicons name="share-social-outline" size={24} color="#007bff" />
         </TouchableOpacity>
+        {onLogout && (
+            <TouchableOpacity onPress={onLogout} style={[styles.iconButton, { backgroundColor: '#FEE2E2' }]}>
+                <Ionicons name="log-out-outline" size={24} color="#EF4444" />
+            </TouchableOpacity>
+        )}
       </View>
 
       <InputModal

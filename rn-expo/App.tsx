@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, ActivityIndicator, TouchableOpacity, StyleSheet, Text } from "react-native";
+import { View, ActivityIndicator, TouchableOpacity, StyleSheet, Text, Modal } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createMaterialTopTabNavigator } from "@react-navigation/material-top-tabs";
 import { enableScreens } from "react-native-screens";
@@ -9,6 +9,7 @@ import ListScreen from "./src/screens/ListScreen";
 import SettingsScreen from "./src/screens/SettingsScreen";
 import ChartsScreen from "./src/screens/ChartsScreen";
 import ReportScreen from "./src/screens/ReportScreen";
+import AuthScreen from "./src/screens/AuthScreen";
 import { AddRecordModal } from "./src/components/AddRecordModal";
 import { Store } from "./src/data/Store";
 import { UIContext } from "./src/context/UIContext";
@@ -43,6 +44,14 @@ const CustomTabBarButton = ({ children, onPress }: any) => (
 );
 
 function MyTabBar({ state, descriptors, navigation, onAddPress }: any) {
+    const focusedRoute = state.routes[state.index];
+    const focusedDescriptor = descriptors[focusedRoute.key];
+    const focusedOptions = focusedDescriptor.options;
+
+    if (focusedOptions.tabBarStyle?.display === "none") {
+        return null;
+    }
+
     return (
       <View style={{
         flexDirection: 'row',
@@ -96,8 +105,8 @@ function MyTabBar({ state, descriptors, navigation, onAddPress }: any) {
                 </TouchableOpacity>
             );
 
-            // If it's the first item (Home), render Home then Add Button
-            if (index === 0) {
+            // If it's the List item, render List then Add Button
+            if (route.name === 'List') {
                 return (
                     <React.Fragment key={route.key}>
                         {TabItem}
@@ -117,6 +126,9 @@ function MyTabBar({ state, descriptors, navigation, onAddPress }: any) {
 export default function App() {
   const [ready, setReady] = useState(false);
   const [addModalVisible, setAddModalVisible] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(Store.isAuthenticated);
+  // authModalVisible is no longer needed since we use tab navigation for auth
+  // const [authModalVisible, setAuthModalVisible] = useState(Store.authModalVisible);
 
   useEffect(() => {
     async function prepare() {
@@ -130,6 +142,12 @@ export default function App() {
       }
     }
     prepare();
+
+    const unsub = Store.subscribe(() => {
+        setIsAuthenticated(Store.isAuthenticated);
+        // setAuthModalVisible(Store.authModalVisible);
+    });
+    return unsub;
   }, []);
 
   if (!ready) {
@@ -179,6 +197,7 @@ export default function App() {
                     tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "wallet" : "wallet-outline"} size={24} color={color} />
                 }}
             />
+            {isAuthenticated && (
             <Tab.Screen 
                 name="Report" 
                 component={ReportScreen} 
@@ -186,6 +205,8 @@ export default function App() {
                     tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "document-text" : "document-text-outline"} size={24} color={color} />
                 }}
             />
+            )}
+            {isAuthenticated ? (
             <Tab.Screen 
                 name="Settings" 
                 component={SettingsScreen} 
@@ -193,6 +214,17 @@ export default function App() {
                     tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "person" : "person-outline"} size={24} color={color} />
                 }}
             />
+            ) : (
+            <Tab.Screen 
+                name="Login" 
+                component={AuthScreen} 
+                options={{
+                    tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "log-in" : "log-in-outline"} size={24} color={color} />,
+                    tabBarStyle: { display: "none" },
+                }}
+            />
+            )}
+            {isAuthenticated && (
             <Tab.Screen 
                 name="Backup" 
                 component={BackupScreen} 
@@ -200,6 +232,7 @@ export default function App() {
                     tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "cloud-upload" : "cloud-upload-outline"} size={24} color={color} />
                 }}
             />
+            )}
         </Tab.Navigator>
         </NavigationContainer>
         
@@ -208,6 +241,9 @@ export default function App() {
             onClose={() => setAddModalVisible(false)} 
             onSave={() => setAddModalVisible(false)}
         />
+        {/* <Modal visible={authModalVisible} animationType="slide" presentationStyle="fullScreen" onRequestClose={() => Store.setAuthModalVisible(false)}>
+            <AuthScreen onClose={() => Store.setAuthModalVisible(false)} />
+        </Modal> */}
     </UIContext.Provider>
   );
 }

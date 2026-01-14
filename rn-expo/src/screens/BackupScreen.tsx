@@ -112,18 +112,21 @@ export default function BackupScreen() {
     };
 
     const restoreBackup = (backup: BackupLog) => {
-        Alert.alert("Restore Backup", `Restore records from ${backup.name}? This will merge with current data.`, [
-            { text: "Cancel", style: "cancel" },
-            { text: "Restore", onPress: async () => {
-                try {
-                    const content = await FileSystem.readAsStringAsync(backup.uri);
-                    const records = JSON.parse(content);
-                    await Store.importCSV(records, `Restore_${backup.name}`);
-                    Alert.alert("Success", `Restored ${records.length} records`);
-                } catch (e: any) {
-                    Alert.alert("Error", "Failed to restore: " + e.message);
-                }
-            }}
+        const doRestore = async (checkDuplicates: boolean) => {
+            try {
+                const content = await FileSystem.readAsStringAsync(backup.uri);
+                const records = JSON.parse(content);
+                const count = await Store.importCSV(records, `Restore_${backup.name}`, checkDuplicates);
+                Alert.alert("Success", `Restored ${count} records`);
+            } catch (e: any) {
+                Alert.alert("Error", "Failed to restore: " + e.message);
+            }
+        };
+
+        Alert.alert("Restore Backup", `Restore records from ${backup.name}?`, [
+            { text: "Merge (Skip Duplicates)", onPress: () => doRestore(true) },
+            { text: "Merge (Keep All)", onPress: () => doRestore(false) },
+            { text: "Cancel", style: "cancel" }
         ]);
     };
 
@@ -163,7 +166,7 @@ export default function BackupScreen() {
 
     return (
         <View style={styles.container}>
-            <AppHeader title="Backups" subtitle="Manage Data Backups" />
+            <AppHeader title="Backups" subtitle="Manage Backups" />
             
             <View style={styles.content}>
                 <TouchableOpacity style={styles.createBtn} onPress={() => setModalVisible(true)}>

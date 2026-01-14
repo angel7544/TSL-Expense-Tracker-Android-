@@ -103,7 +103,7 @@ export default function ReportScreen() {
                 <p>${settings.company_contact}</p>
               </div>
               <div class="report-info">
-                <h1>Expense Analysis Report</h1>
+                <h1>Analysis Report</h1>
                 <p>Date: ${new Date().toLocaleDateString()}</p>
                 <p>Generated via AndroidTSLExpense</p>
                 <p>Size: ${settings.pdf_page_size || 'A4'}</p>
