@@ -10,10 +10,15 @@ import * as Sharing from "expo-sharing";
 
 import { Store } from "../data/Store";
 import { ImportExport } from "../services/ImportExport";
+import { InputModal } from "./InputModal";
+import { InfoModal } from "./InfoModal";
 
-export const AppHeader = ({ title, subtitle }: { title?: string, subtitle?: string }) => {
+export const AppHeader = ({ title, subtitle, showCreateDB = false }: { title?: string, subtitle?: string, showCreateDB?: boolean }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [logoUri, setLogoUri] = useState<string | null>(null);
+  const [newFileModalVisible, setNewFileModalVisible] = useState(false);
+  const [exportModalVisible, setExportModalVisible] = useState(false);
+  const [exportType, setExportType] = useState<'csv' | 'excel'>('csv');
 
   useEffect(() => {
     loadLogo();
@@ -114,23 +119,51 @@ export const AppHeader = ({ title, subtitle }: { title?: string, subtitle?: stri
     }
   };
 
+  const handleCreateFile = async (name: string) => {
+    try {
+        setNewFileModalVisible(false);
+        const dbName = `db_${Date.now()}.db`;
+        await Store.switchDatabase(dbName);
+        await Store.addRecentDatabase(name, dbName);
+        Alert.alert("Success", `Created new database: ${name}`);
+    } catch (e: any) {
+        Alert.alert("Error", e.message);
+    }
+  };
+
+  const handleExportSubmit = async (filename: string) => {
+      setExportModalVisible(false);
+      try {
+          const records = await Store.list({});
+          if (exportType === 'csv') {
+              const csv = Store.exportCSV(records);
+              const finalName = filename.toLowerCase().endsWith('.csv') ? filename : `${filename}.csv`;
+              saveFile(csv, finalName, 'text/csv');
+          } else {
+              const b64 = ImportExport.generateExcelBase64(records);
+              const finalName = filename.toLowerCase().endsWith('.xlsx') ? filename : `${filename}.xlsx`;
+              saveFile(b64, finalName, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', true);
+          }
+      } catch (e: any) {
+          Alert.alert("Export Error", e.message);
+      }
+  };
+
   const handleExport = async () => {
     Alert.alert("Export Data", "Choose format", [
         { text: "Cancel", style: "cancel" },
         { 
             text: "CSV", 
-            onPress: async () => {
-                const data = await Store.list({});
-                const csv = Store.exportCSV(data);
-                saveFile(csv, `expenses_${Date.now()}.csv`, "text/csv");
+            onPress: () => {
+                setExportType('csv');
+                setExportModalVisible(true);
             } 
         },
         { 
             text: "Excel (XLSX)", 
-            onPress: async () => {
-                const data = await Store.list({});
-                const b64 = ImportExport.generateExcelBase64(data);
-                saveFile(b64, `expenses_${Date.now()}.xlsx`, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", true);
+            onPress: () => {
+                setExportType('excel');
+                setExportModalVisible(true);
             } 
         }
     ]);
@@ -155,6 +188,11 @@ export const AppHeader = ({ title, subtitle }: { title?: string, subtitle?: stri
       </View>
 
       <View style={styles.rightRow}>
+        {showCreateDB && (
+            <TouchableOpacity onPress={() => setNewFileModalVisible(true)} style={styles.iconButton}>
+                <Ionicons name="add" size={24} color="#007bff" />
+            </TouchableOpacity>
+        )}
         <TouchableOpacity onPress={handleImport} style={styles.iconButton}>
             <Ionicons name="file-tray-full-outline" size={24} color="#007bff" />
         </TouchableOpacity>
@@ -163,52 +201,30 @@ export const AppHeader = ({ title, subtitle }: { title?: string, subtitle?: stri
         </TouchableOpacity>
       </View>
 
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.centeredView}>
-          {Platform.OS === 'ios' ? (
-            <BlurView style={styles.absolute} intensity={50} tint="dark" />
-          ) : (
-            <View style={styles.absoluteAndroid} />
-          )}
-          
-          <View style={styles.modalView}>
-            <TouchableOpacity 
-                style={styles.closeButton} 
-                onPress={() => setModalVisible(false)}
-            >
-                <Ionicons name="close" size={24} color="#333" />
-            </TouchableOpacity>
+      <InputModal
+        visible={newFileModalVisible}
+        title="New Database"
+        placeholder="Enter database name"
+        onClose={() => setNewFileModalVisible(false)}
+        onSubmit={handleCreateFile}
+        submitLabel="Create"
+      />
 
-            {logoUri && <Image source={{ uri: logoUri }} style={styles.modalLogo} />}
-            <Text style={styles.modalTitle}>AndroidTSLExpense</Text>
-            <Text style={styles.modalVersion}>Version 1.0.0</Text>
-            
-            <Text style={styles.devLabel}>Developed by</Text>
-            <Text style={styles.devName}>Angel (Mehul) Singh</Text>
-            <Text style={styles.companyName}>The Space Lab & BR31Technologies</Text>
+      <InputModal
+        visible={exportModalVisible}
+        title={`Export ${exportType.toUpperCase()}`}
+        placeholder="Enter filename"
+        initialValue={`expenses_${Date.now()}`}
+        onClose={() => setExportModalVisible(false)}
+        onSubmit={handleExportSubmit}
+        submitLabel="Export"
+      />
 
-            <View style={styles.linksContainer}>
-                <TouchableOpacity onPress={() => openLink("https://br31tech.live")} style={styles.linkButton}>
-                    <Ionicons name="globe-outline" size={20} color="#fff" />
-                    <Text style={styles.linkText}>Website</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => openLink("https://github.com/br31tech")} style={[styles.linkButton, { backgroundColor: "#333" }]}>
-                    <Ionicons name="logo-github" size={20} color="#fff" />
-                    <Text style={styles.linkText}>GitHub</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => openLink("https://linkedin.com/in/br31tech")} style={[styles.linkButton, { backgroundColor: "#0077b5" }]}>
-                    <Ionicons name="logo-linkedin" size={20} color="#fff" />
-                    <Text style={styles.linkText}>LinkedIn</Text>
-                </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <InfoModal 
+        visible={modalVisible} 
+        onClose={() => setModalVisible(false)} 
+        logoUri={logoUri} 
+      />
     </View>
   );
 };

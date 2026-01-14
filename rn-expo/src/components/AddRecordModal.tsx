@@ -93,7 +93,7 @@ const DropdownInput = ({
                     shadowOpacity: 0.25,
                     shadowRadius: 3.84,
                 }}>
-                    <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled">
+                    <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
                         {suggestions.map((item, i) => (
                             <TouchableOpacity key={i} onPress={() => onSelect(item)} style={{ padding: 16, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}>
                                 <Text style={{fontSize: 14, color: '#333'}}>{item}</Text>
@@ -106,7 +106,7 @@ const DropdownInput = ({
     );
 };
 
-export const AddRecordModal = ({ visible, onClose, onSave }: AddRecordModalProps) => {
+export const AddRecordModal = ({ visible, onClose, onSave, record }: AddRecordModalProps) => {
   const [form, setForm] = useState({
     expense_date: new Date().toISOString().slice(0, 10),
     expense_description: "",
@@ -124,9 +124,30 @@ export const AddRecordModal = ({ visible, onClose, onSave }: AddRecordModalProps
 
   useEffect(() => {
     if (visible) {
+        if (record) {
+            setForm({
+                expense_date: record.expense_date,
+                expense_description: record.expense_description,
+                expense_category: record.expense_category,
+                merchant_name: record.merchant_name,
+                paid_through: record.paid_through,
+                income_amount: String(record.income_amount),
+                expense_amount: String(record.expense_amount)
+            });
+        } else {
+            setForm({
+                expense_date: new Date().toISOString().slice(0, 10),
+                expense_description: "",
+                expense_category: "",
+                merchant_name: "",
+                paid_through: "",
+                income_amount: "0",
+                expense_amount: "0"
+            });
+        }
         loadSuggestions();
     }
-  }, [visible]);
+  }, [visible, record]);
 
   const loadSuggestions = async () => {
     const cats = await Store.getUniqueValues("expense_category");
@@ -142,54 +163,46 @@ export const AddRecordModal = ({ visible, onClose, onSave }: AddRecordModalProps
          
          const filename = `backup_${new Date().toISOString().replace(/[:.]/g, "-")}.csv`;
 
-         if (Platform.OS === "android") {
-             try {
-                 const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
-                 if (permissions.granted) {
-                     const uri = await FileSystem.StorageAccessFramework.createFileAsync(permissions.directoryUri, filename, "text/csv");
-                     await FileSystem.writeAsStringAsync(uri, csv, { encoding: FileSystem.EncodingType.UTF8 });
-                     Alert.alert("Backup Success", "Saved to " + uri);
-                 }
-             } catch (err) {
-                 Alert.alert("Backup Error", "Could not save file");
-             }
-         } else {
-             const uri = FileSystem.documentDirectory + filename;
-             await FileSystem.writeAsStringAsync(uri, csv);
-             Alert.alert("Backup Created", "File saved locally (use Export in Settings to share)");
-         }
+         // Save directly to application sandbox (internal storage) without asking for folder
+         const uri = FileSystem.documentDirectory + filename;
+         await FileSystem.writeAsStringAsync(uri, csv, { encoding: FileSystem.EncodingType.UTF8 });
+         
+         Alert.alert("Backup Created", "File saved internally to application storage.\n" + filename);
      } catch (e: any) {
          Alert.alert("Error", e.message);
      }
   };
 
   const save = async () => {
-    await Store.add({
+    const data = {
         ...form,
         income_amount: Number(form.income_amount),
         expense_amount: Number(form.expense_amount)
-    });
-    
-    setForm({
-        expense_date: new Date().toISOString().slice(0, 10),
-        expense_description: "",
-        expense_category: "",
-        merchant_name: "",
-        paid_through: "",
-        income_amount: "0",
-        expense_amount: "0"
-    });
+    };
 
+    if (record && record.id) {
+        await Store.update({ ...data, id: record.id });
+    } else {
+        await Store.add(data);
+    }
+    
+    // Reset form is handled by useEffect on next open or explicit reset if needed
+    // But since we close modal, next open will reset or load new record
+    
     onSave(); 
     
-    Alert.alert(
-        "Record Saved",
-        "Do you want to backup your data to storage now?",
-        [
-            { text: "No", style: "cancel", onPress: onClose },
-            { text: "Yes, Backup", onPress: () => { backupToStorage(); onClose(); } }
-        ]
-    );
+    if (!record) { // Only prompt backup on new records
+        Alert.alert(
+            "Record Saved",
+            "Do you want to backup your data to storage now?",
+            [
+                { text: "No", style: "cancel", onPress: onClose },
+                { text: "Yes, Backup", onPress: () => { backupToStorage(); onClose(); } }
+            ]
+        );
+    } else {
+        onClose();
+    }
   };
 
   return (
@@ -200,13 +213,13 @@ export const AddRecordModal = ({ visible, onClose, onSave }: AddRecordModalProps
       >
         <View style={{ backgroundColor: "#fff", borderRadius: 12, maxHeight: "90%", width: "100%", maxWidth: 600, alignSelf: "center" }}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", padding: 16, borderBottomWidth: 1, borderColor: "#eee" }}>
-            <Text style={{ fontSize: 18, fontWeight: "600" }}>Add Record</Text>
+            <Text style={{ fontSize: 18, fontWeight: "600" }}>{record ? "Edit Record" : "Add Record"}</Text>
             <TouchableOpacity onPress={onClose}>
               <Ionicons name="close" size={24} color="#333" />
             </TouchableOpacity>
           </View>
           
-          <ScrollView contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
+          <ScrollView contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             <Text style={styles.label}>Date</Text>
             <TextInput value={form.expense_date} onChangeText={t => setForm({ ...form, expense_date: t })} style={styles.input} />
             

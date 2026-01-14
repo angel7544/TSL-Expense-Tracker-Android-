@@ -43,13 +43,15 @@ export default function ListScreen() {
         <TouchableOpacity onPress={() => setFilterVisible(true)} style={{ backgroundColor: activeFilterCount > 0 ? "#007bff" : "#fff", width: 44, height: 44, borderRadius: 8, justifyContent: "center", alignItems: "center", marginRight: 8, borderWidth: 1, borderColor: activeFilterCount > 0 ? "#007bff" : "#ddd" }}>
            <Ionicons name="filter" size={20} color={activeFilterCount > 0 ? "#fff" : "#666"} />
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => setModalVisible(true)} style={{ backgroundColor: "#007bff", width: 44, height: 44, borderRadius: 22, justifyContent: "center", alignItems: "center" }}>
+        <TouchableOpacity onPress={() => { setSelectedRecord(null); setModalVisible(true); }} style={{ backgroundColor: "#007bff", width: 44, height: 44, borderRadius: 22, justifyContent: "center", alignItems: "center" }}>
            <Ionicons name="add" size={24} color="#fff" />
         </TouchableOpacity>
       </View>
 
       <FlatList
         data={data}
+        showsVerticalScrollIndicator={false}
+        showsHorizontalScrollIndicator={false}
         keyExtractor={(item, index) => item.id ? String(item.id) : String(index)}
         renderItem={({ item }) => (
           <View style={{ backgroundColor: "#fff", padding: 12, borderRadius: 8, marginBottom: 8, borderWidth: 1, borderColor: "#eee" }}>

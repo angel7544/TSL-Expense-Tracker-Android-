@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { View, ActivityIndicator, TouchableOpacity, StyleSheet, Text } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
-import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { createMaterialTopTabNavigator } from "@react-navigation/material-top-tabs";
 import { enableScreens } from "react-native-screens";
 import { Ionicons } from "@expo/vector-icons";
 import HomeScreen from "./src/screens/HomeScreen";
@@ -12,6 +12,7 @@ import ReportScreen from "./src/screens/ReportScreen";
 import { AddRecordModal } from "./src/components/AddRecordModal";
 import { Store } from "./src/data/Store";
 import { UIContext } from "./src/context/UIContext";
+import BackupScreen from "./src/screens/BackupScreen";
 
 const CustomTabBarButton = ({ children, onPress }: any) => (
     <TouchableOpacity
@@ -19,6 +20,7 @@ const CustomTabBarButton = ({ children, onPress }: any) => (
             top: -20,
             justifyContent: 'center',
             alignItems: 'center',
+            width: 50, // allocate space in flex layout
         }}
         onPress={onPress}
     >
@@ -39,6 +41,78 @@ const CustomTabBarButton = ({ children, onPress }: any) => (
         </View>
     </TouchableOpacity>
 );
+
+function MyTabBar({ state, descriptors, navigation, onAddPress }: any) {
+    return (
+      <View style={{
+        flexDirection: 'row',
+        position: 'absolute',
+        bottom: 3,
+        left: 20,
+        right: 20,
+        elevation: 0,
+        backgroundColor: '#ffffff',
+        borderRadius: 25,
+        height: 65,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 5 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+        // borderTopWidth: 0, // not needed for View
+        alignItems: 'center',
+        justifyContent: 'space-between',
+      }}>
+        {state.routes.map((route: any, index: number) => {
+            // Logic to render Home, then Add, then others
+            // Routes: Home (0), Charts (1), List (2), Report (3), Settings (4), Backup (5)
+            // We want Add between Home and Charts.
+            
+            // Render the current route tab
+            const { options } = descriptors[route.key];
+            const isFocused = state.index === index;
+    
+            const onPress = () => {
+                const event = navigation.emit({
+                  type: 'tabPress',
+                  target: route.key,
+                  canPreventDefault: true,
+                });
+    
+                if (!isFocused && !event.defaultPrevented) {
+                  navigation.navigate(route.name);
+                }
+            };
+    
+            const color = isFocused ? "#8B5CF6" : "#CDCDE0";
+            const icon = options.tabBarIcon ? options.tabBarIcon({ focused: isFocused, color, size: 24 }) : null;
+            
+            const TabItem = (
+                <TouchableOpacity
+                    key={route.key}
+                    onPress={onPress}
+                    style={{ flex: 1, alignItems: 'center', justifyContent: 'center', height: '100%' }}
+                >
+                    {icon}
+                </TouchableOpacity>
+            );
+
+            // If it's the first item (Home), render Home then Add Button
+            if (index === 0) {
+                return (
+                    <React.Fragment key={route.key}>
+                        {TabItem}
+                        <CustomTabBarButton onPress={onAddPress}>
+                            <Ionicons name="add" size={32} color="white" />
+                        </CustomTabBarButton>
+                    </React.Fragment>
+                );
+            }
+
+            return TabItem;
+        })}
+      </View>
+    );
+}
 
 export default function App() {
   const [ready, setReady] = useState(false);
@@ -66,32 +140,19 @@ export default function App() {
     );
   }
 
-  const Tab = createBottomTabNavigator();
+  const Tab = createMaterialTopTabNavigator();
   
   return (
     <UIContext.Provider value={{ showAddModal: () => setAddModalVisible(true) }}>
         <NavigationContainer>
         <Tab.Navigator
+            tabBarPosition="bottom"
+            tabBar={props => <MyTabBar {...props} onAddPress={() => setAddModalVisible(true)} />}
             screenOptions={{
-                headerShown: false,
+                swipeEnabled: true,
                 tabBarShowLabel: false,
-                tabBarStyle: {
-                    position: 'absolute',
-                    bottom:3,
-                    left: 20,
-                    right: 20,
-                    elevation: 0,
-                    backgroundColor: '#ffffff',
-                    borderRadius: 25,
-                    height:65,
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: 5 },
-                    shadowOpacity: 0.1,
-                    shadowRadius: 10,
-                    borderTopWidth: 0
-                },
-                tabBarActiveTintColor: "#8B5CF6",
-                tabBarInactiveTintColor: "#CDCDE0",
+                tabBarIndicatorStyle: { height: 0 }, // Hide default indicator
+                // Animation settings usually default to pager swipe which is what we want
             }}
         >
            
@@ -102,14 +163,7 @@ export default function App() {
                     tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "home" : "home-outline"} size={24} color={color} />
                 }}
             />
-             <Tab.Screen 
-                name="Add" 
-                component={View} // Placeholder
-                options={{
-                    tabBarIcon: ({ focused }) => <Ionicons name="add" size={32} color="white" />,
-                    tabBarButton: (props) => <CustomTabBarButton {...props} onPress={() => setAddModalVisible(true)} />
-                }}
-            />
+            {/* Add screen removed from navigator to avoid swipe landing on it */}
             <Tab.Screen 
                 name="Charts" 
                 component={ChartsScreen} 
@@ -137,6 +191,13 @@ export default function App() {
                 component={SettingsScreen} 
                 options={{
                     tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "person" : "person-outline"} size={24} color={color} />
+                }}
+            />
+            <Tab.Screen 
+                name="Backup" 
+                component={BackupScreen} 
+                options={{
+                    tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "cloud-upload" : "cloud-upload-outline"} size={24} color={color} />
                 }}
             />
         </Tab.Navigator>

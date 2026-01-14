@@ -2,13 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, Button, Alert, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
 import { Ionicons } from '@expo/vector-icons';
 import { Store, ExpenseRecord } from '../data/Store';
 import { AppHeader } from "../components/AppHeader";
+import { InputModal } from '../components/InputModal';
 
 export default function ReportScreen() {
   const [records, setRecords] = useState<ExpenseRecord[]>([]);
   const [summary, setSummary] = useState({ inc: 0, exp: 0, net: 0 });
+  const [modalVisible, setModalVisible] = useState(false);
 
   const loadData = async () => {
     try {
@@ -28,7 +31,7 @@ export default function ReportScreen() {
     return unsub;
   }, []);
 
-  const generatePdf = async () => {
+  const generatePdf = async (filename: string) => {
     try {
       // Re-fetch to ensure latest data
       const data = await Store.list({});
@@ -166,10 +169,18 @@ export default function ReportScreen() {
       `;
 
       const { uri } = await Print.printToFileAsync({ html });
-      await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
+      const finalName = filename.toLowerCase().endsWith('.pdf') ? filename : `${filename}.pdf`;
+      const newUri = uri.substring(0, uri.lastIndexOf('/') + 1) + finalName;
+      await FileSystem.moveAsync({ from: uri, to: newUri });
+      await Sharing.shareAsync(newUri, { UTI: '.pdf', mimeType: 'application/pdf', dialogTitle: finalName });
     } catch (error: any) {
       Alert.alert("Error", "Failed to generate report: " + error.message);
     }
+  };
+
+  const handlePdfSubmit = (filename: string) => {
+    setModalVisible(false);
+    generatePdf(filename);
   };
 
   return (
@@ -182,12 +193,22 @@ export default function ReportScreen() {
                 <Text style={styles.title}>Expense Analysis Report</Text>
                 <Text style={styles.subtitle}>Date: {new Date().toLocaleDateString()}</Text>
             </View>
-            <TouchableOpacity style={styles.miniButton} onPress={generatePdf}>
+            <TouchableOpacity style={styles.miniButton} onPress={() => setModalVisible(true)}>
                 <Ionicons name="document-text-outline" size={20} color="#fff" />
                 <Text style={styles.miniButtonText}>PDF</Text>
             </TouchableOpacity>
         </View>
       </View>
+
+      <InputModal
+        visible={modalVisible}
+        title="Export PDF"
+        placeholder="Enter filename"
+        initialValue={`Report_${new Date().toISOString().slice(0,10)}`}
+        onClose={() => setModalVisible(false)}
+        onSubmit={handlePdfSubmit}
+        submitLabel="Generate"
+      />
 
       <View style={styles.summaryContainer}>
         <View style={styles.summaryItem}>
@@ -206,7 +227,11 @@ export default function ReportScreen() {
         </View>
       </View>
 
-      <ScrollView style={styles.list}>
+      <ScrollView 
+        style={styles.list}
+        showsVerticalScrollIndicator={false}
+        showsHorizontalScrollIndicator={false}
+      >
         <View style={styles.tableHeader}>
           <Text style={[styles.col, { flex: 2 }]}>Date/Desc</Text>
           <Text style={[styles.col, { flex: 1 }]}>Cat</Text>

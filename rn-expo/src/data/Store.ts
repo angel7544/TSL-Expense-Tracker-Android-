@@ -190,6 +190,21 @@ export const Store = {
       return [];
   },
 
+  async removeRecentDatabase(dbName: string) {
+    if (Platform.OS === 'web') return;
+    try {
+        const path = FileSystem.documentDirectory + "recent_files.json";
+        const info = await FileSystem.getInfoAsync(path);
+        if (info.exists) {
+            const content = await FileSystem.readAsStringAsync(path);
+            let current: any[] = JSON.parse(content);
+            current = current.filter(x => x.dbName !== dbName);
+            await FileSystem.writeAsStringAsync(path, JSON.stringify(current));
+            this.notify();
+        }
+    } catch (e) { console.error("Failed to remove recent DB", e); }
+  },
+
   async switchDatabase(dbName: string) {
     if (Platform.OS === 'web') return;
     try {

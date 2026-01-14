@@ -96,15 +96,27 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     ]);
   };
 
+  const removeDatabase = async (dbName: string) => {
+    Alert.alert("Remove Recent", "Remove this file from recent list?", [
+        { text: "Cancel", style: "cancel" },
+        { text: "Remove", onPress: async () => {
+            await Store.removeRecentDatabase(dbName);
+            loadData();
+        }}
+    ]);
+  };
+
   const monthName = currentDate.toLocaleString('default', { month: 'long' });
 
   return (
     <View style={{ flex: 1, backgroundColor: "#f8f9fa" }}>
-      <AppHeader title="Dashboard" subtitle="Overview" />
+      <AppHeader title="Dashboard" subtitle="Overview" showCreateDB={true} />
       
       <ScrollView 
         style={{ flex: 1 }} 
         contentContainerStyle={{ paddingBottom: 80 }}
+        showsVerticalScrollIndicator={false}
+        showsHorizontalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -191,7 +203,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             <Text style={styles.sectionTitle}>Top {activeTab === 'Expense' ? 'Spending' : 'Sources'}</Text>
         </View>
         
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ paddingLeft: 16, marginBottom: 24 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }} style={{ marginBottom: 24 }}>
             {topCategories.length === 0 ? (
                 <Text style={{ color: '#999', padding: 16 }}>No data for this month</Text>
             ) : topCategories.map((item, index) => (
@@ -237,10 +249,15 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
              <View style={{ marginTop: 24, paddingHorizontal: 16 }}>
                 <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>Recent Databases</Text>
                 {recentFiles.map((f, i) => (
-                    <TouchableOpacity key={i} onPress={() => switchDatabase(f)} style={styles.fileRow}>
-                        <Ionicons name="server-outline" size={20} color="#666" />
-                        <Text style={{ marginLeft: 8, color: "#333" }}>{f.name}</Text>
-                    </TouchableOpacity>
+                    <View key={i} style={styles.fileRow}>
+                        <TouchableOpacity onPress={() => switchDatabase(f)} style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                            <Ionicons name="server-outline" size={20} color="#666" />
+                            <Text style={{ marginLeft: 8, color: "#333" }}>{f.name}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => removeDatabase(f.dbName)} style={{ padding: 4 }}>
+                            <Ionicons name="trash-outline" size={18} color="#dc3545" />
+                        </TouchableOpacity>
+                    </View>
                 ))}
              </View>
         )}

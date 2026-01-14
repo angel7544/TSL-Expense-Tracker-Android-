@@ -77,7 +77,7 @@ export const FilterModal = ({ visible, onClose, onApply, currentFilters }: Filte
             </TouchableOpacity>
           </View>
           
-          <ScrollView style={{ padding: 16 }}>
+          <ScrollView style={{ padding: 16 }} showsVerticalScrollIndicator={false}>
             <Section 
                 title="Year" 
                 items={options.years} 

@@ -8,6 +8,8 @@ import { BlurView } from 'expo-blur';
 import { Store } from "../data/Store";
 import { ImportExport } from "../services/ImportExport";
 import { AppHeader } from "../components/AppHeader";
+import { InputModal } from "../components/InputModal";
+import { InfoModal } from "../components/InfoModal";
 
 const { width, height } = Dimensions.get("window");
 
@@ -18,6 +20,8 @@ export default function SettingsScreen({ navigation }: any) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
+  const [exportModalVisible, setExportModalVisible] = useState(false);
+  const [infoModalVisible, setInfoModalVisible] = useState(false);
 
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [email, setEmail] = useState("");
@@ -141,41 +145,32 @@ export default function SettingsScreen({ navigation }: any) {
 
   const saveToStorage = async (content: string, filename: string, mime: string) => {
       try {
-          if (Platform.OS === "android") {
-              try {
-                  const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
-                  if (permissions.granted) {
-                      const uri = await FileSystem.StorageAccessFramework.createFileAsync(permissions.directoryUri, filename, mime);
-                      await FileSystem.writeAsStringAsync(uri, content, { encoding: FileSystem.EncodingType.UTF8 });
-                      Alert.alert("Success", "Saved to " + uri);
-                  } else {
-                      Alert.alert("Permission denied");
-                  }
-              } catch (err) {
-                  const uri = FileSystem.documentDirectory + filename;
-                  await FileSystem.writeAsStringAsync(uri, content);
-                  await Sharing.shareAsync(uri);
-              }
-          } else {
-               const uri = FileSystem.documentDirectory + filename;
-               await FileSystem.writeAsStringAsync(uri, content);
-               await Sharing.shareAsync(uri);
-          }
+           // Save directly to application sandbox (internal storage) without asking for folder
+           const uri = FileSystem.documentDirectory + filename;
+           await FileSystem.writeAsStringAsync(uri, content, { encoding: FileSystem.EncodingType.UTF8 });
+           
+           Alert.alert("Export Success", "File saved internally.\n" + filename + "\n\nUse 'Share' to send it elsewhere.");
+           // Optional: Offer to share immediately
+           // await Sharing.shareAsync(uri);
       } catch (e: any) {
           Alert.alert("Error", e.message);
       }
   };
 
-  const exportCsv = async () => {
+  const handleExportSubmit = async (filename: string) => {
+    setExportModalVisible(false);
+    const finalName = filename.toLowerCase().endsWith('.csv') ? filename : `${filename}.csv`;
     const records = await Store.list({});
     const csv = Store.exportCSV(records);
-    saveToStorage(csv, "expenses.csv", "text/csv");
+    saveToStorage(csv, finalName, "text/csv");
+  };
+
+  const exportCsv = () => {
+    setExportModalVisible(true);
   };
 
   const backup = async () => {
-    const records = await Store.list({});
-    const json = JSON.stringify(records, null, 2);
-    saveToStorage(json, `backup_${new Date().toISOString().slice(0,10)}.json`, "application/json");
+    navigation.navigate("Backup");
   };
 
   if (!isAuthenticated) {
@@ -187,6 +182,27 @@ export default function SettingsScreen({ navigation }: any) {
             <View style={[styles.blob, { top: height/3, left: width/2, width: 200, height: 200, backgroundColor: "#8B5CF6", opacity: 0.4 }]} />
 
             <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
+
+            {/* Info Button */}
+            <TouchableOpacity 
+                style={{
+                    position: 'absolute',
+                    top: 50,
+                    right: 20,
+                    zIndex: 50,
+                    width: 44,
+                    height: 44,
+                    borderRadius: 22,
+                    backgroundColor: 'rgba(255,255,255,0.2)',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderWidth: 1,
+                    borderColor: 'rgba(255,255,255,0.3)'
+                }}
+                onPress={() => setInfoModalVisible(true)}
+            >
+                <Ionicons name="information" size={24} color="#fff" />
+            </TouchableOpacity>
 
             {/* Home Button for Non-Logged Users */}
             <TouchableOpacity 
@@ -210,7 +226,11 @@ export default function SettingsScreen({ navigation }: any) {
             </TouchableOpacity>
 
             <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1, justifyContent: "center" }}>
-            <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "center", padding: 24 }}>
+            <ScrollView 
+                contentContainerStyle={{ flexGrow: 1, justifyContent: "center", padding: 24 }}
+                showsVerticalScrollIndicator={false}
+                showsHorizontalScrollIndicator={false}
+            >
                 <View style={{ alignItems: "center", marginBottom: 50 }}>
                     <View style={styles.logoContainer}>
                         <Ionicons name="stats-chart" size={48} color="#fff" />
@@ -296,8 +316,18 @@ export default function SettingsScreen({ navigation }: any) {
   return (
     <View style={{ flex: 1, backgroundColor: "#F3F4F6" }}>
       <AppHeader title="Settings" subtitle="Preferences & Data" />
-      <ScrollView style={{ flex: 1, padding: 20 }}>
+      <ScrollView 
+        style={{ flex: 1, padding: 20 }}
+        showsVerticalScrollIndicator={false}
+        showsHorizontalScrollIndicator={false}
+      >
       
+      <View style={{ position: 'absolute', top: 10, right: 10, zIndex: 10 }}>
+        <TouchableOpacity onPress={() => setInfoModalVisible(true)}>
+            <Ionicons name="information-circle-outline" size={24} color="#4F46E5" />
+        </TouchableOpacity>
+      </View>
+
       <Text style={styles.sectionTitle}>PROFILE SETTINGS</Text>
       
       <View style={styles.modernCard}>
@@ -491,7 +521,23 @@ export default function SettingsScreen({ navigation }: any) {
       </View>
       
       <View style={{ height: 60 }} />
-    </ScrollView>
+      </ScrollView>
+
+      <InputModal
+        visible={exportModalVisible}
+        title="Export CSV"
+        placeholder="Enter filename"
+        initialValue={`expenses_${Date.now()}`}
+        onClose={() => setExportModalVisible(false)}
+        onSubmit={handleExportSubmit}
+        submitLabel="Export"
+      />
+
+      <InfoModal 
+        visible={infoModalVisible} 
+        onClose={() => setInfoModalVisible(false)} 
+        logoUri={settings.company_logo} 
+      />
     </View>
   );
 }

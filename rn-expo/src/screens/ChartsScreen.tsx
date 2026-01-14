@@ -185,7 +185,7 @@ export default function ChartsScreen() {
     <View style={{ flex: 1, backgroundColor: "#f8f9fa" }}>
       <AppHeader title="Analytics" subtitle="Financial Overview" />
       
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 40 }}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
         
         {/* Filter & PDF Row */}
         <View style={styles.filterRow}>
