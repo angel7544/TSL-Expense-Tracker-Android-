@@ -445,12 +445,58 @@ export const Store = {
     });
   },
 
-  async importCSV(rows: ExpenseRecord[], reportName: string) {
+  async isDuplicate(record: ExpenseRecord): Promise<boolean> {
+      if (Platform.OS === 'web') {
+          return webRecords.some(r => 
+              r.expense_date === record.expense_date &&
+              r.expense_description === record.expense_description &&
+              r.expense_category === record.expense_category &&
+              r.merchant_name === record.merchant_name &&
+              r.income_amount === record.income_amount &&
+              r.expense_amount === record.expense_amount
+          );
+      } else {
+          if (!db) return false;
+          try {
+               const query = `
+                  SELECT id FROM expenses 
+                  WHERE expense_date = ? 
+                  AND expense_description = ? 
+                  AND expense_category = ? 
+                  AND merchant_name = ? 
+                  AND abs(income_amount - ?) < 0.001 
+                  AND abs(expense_amount - ?) < 0.001
+                  LIMIT 1
+               `;
+               const rows = await db.getAllAsync(query, [
+                   record.expense_date, 
+                   record.expense_description, 
+                   record.expense_category,
+                   record.merchant_name,
+                   record.income_amount,
+                   record.expense_amount
+               ]);
+               return rows.length > 0;
+          } catch (e) {
+              console.error("Duplicate check error", e);
+              return false;
+          }
+      }
+  },
+
+  async importCSV(rows: ExpenseRecord[], reportName: string, checkDuplicates: boolean = false) {
     const name = reportName || "Manual";
+    let addedCount = 0;
     for (const r of rows) {
+      if (checkDuplicates) {
+        const isDup = await this.isDuplicate(r);
+        if (isDup) continue;
+      }
       await this.add({ ...r, report_name: name }, false);
+      addedCount++;
     }
     this.notify();
+    return addedCount;
   },
 
   exportCSV(records: ExpenseRecord[]) {

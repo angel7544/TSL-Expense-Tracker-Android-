@@ -63,32 +63,34 @@ export const AppHeader = ({ title, subtitle, showCreateDB = false }: { title?: s
         if (res.canceled) return;
         const file = res.assets[0];
         
-        const importData = async (create: boolean) => {
+        const importData = async (create: boolean, checkDuplicates: boolean) => {
             if (create) {
                 const dbName = `db_${Date.now()}.db`;
                 await Store.switchDatabase(dbName);
                 await Store.addRecentDatabase(file.name, dbName);
             }
             
+            let count = 0;
             if (file.name.toLowerCase().endsWith(".csv")) {
                 const content = await FileSystem.readAsStringAsync(file.uri);
                 const rows = ImportExport.parseCSV(content);
-                await Store.importCSV(rows, file.name);
-                Alert.alert("Success", `Imported ${rows.length} records${create ? " into new database" : ""}`);
+                count = await Store.importCSV(rows, file.name, checkDuplicates);
             } else {
                 const b64 = await FileSystem.readAsStringAsync(file.uri, { encoding: FileSystem.EncodingType.Base64 });
                 const rows = ImportExport.parseWorkbookBase64(b64);
-                await Store.importCSV(rows, file.name);
-                Alert.alert("Success", `Imported ${rows.length} records${create ? " into new database" : ""}`);
+                count = await Store.importCSV(rows, file.name, checkDuplicates);
             }
+            
+            Alert.alert("Success", `Imported ${count} records${create ? " into new database" : ""}`);
         };
 
         Alert.alert(
             "Import Mode", 
             "Create a new database for this file or merge into current?",
             [
-                { text: "Merge", onPress: () => importData(false) },
-                { text: "New Database", onPress: () => importData(true) },
+                { text: "Merge (Skip Duplicates)", onPress: () => importData(false, true) },
+                { text: "Merge (Keep All)", onPress: () => importData(false, false) },
+                { text: "New Database", onPress: () => importData(true, false) },
                 { text: "Cancel", style: "cancel" }
             ]
         );

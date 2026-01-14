@@ -48,13 +48,13 @@ export const ImportExport = {
     const ws = wb.Sheets[sheetName];
     const json: any[] = XLSX.utils.sheet_to_json(ws, { defval: "" });
     return json.map((r: any) => ({
-      expense_date: parseDate(r["Expense Date"] ?? r["Date"] ?? r["date"] ?? ""),
-      expense_description: String(r["Expense Description"] ?? r["Description"] ?? r["description"] ?? "").trim(),
-      expense_category: String(r["Expense Category"] ?? r["Category"] ?? r["category"] ?? "").trim(),
-      merchant_name: String(r["Merchant Name"] ?? r["Merchant"] ?? r["merchant"] ?? "").trim(),
+      expense_date: parseDate(r["Expense Date"] ?? r["Date"] ?? r["date"] ?? r["expense_date"] ?? ""),
+      expense_description: String(r["Expense Description"] ?? r["Description"] ?? r["description"] ?? r["expense_description"] ?? "").trim(),
+      expense_category: String(r["Expense Category"] ?? r["Category"] ?? r["category"] ?? r["expense_category"] ?? "").trim(),
+      merchant_name: String(r["Merchant Name"] ?? r["Merchant"] ?? r["merchant"] ?? r["merchant_name"] ?? "").trim(),
       paid_through: String(r["Paid Through"] ?? r["paid_through"] ?? r["Paid"] ?? "").trim(),
-      income_amount: parseNumber(r["Income Amount"] ?? r["Income"] ?? r["income"]),
-      expense_amount: parseNumber(r["Expense Amount"] ?? r["Expense"] ?? r["amount"])
+      income_amount: parseNumber(r["Income Amount"] ?? r["Income"] ?? r["income"] ?? r["income_amount"]),
+      expense_amount: parseNumber(r["Expense Amount"] ?? r["Expense"] ?? r["amount"] ?? r["expense_amount"])
     }));
   },
   generateExcelBase64(records: any[]) {
