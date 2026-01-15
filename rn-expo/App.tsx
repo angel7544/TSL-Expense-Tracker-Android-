@@ -15,6 +15,8 @@ import { Store } from "./src/data/Store";
 import { UIContext } from "./src/context/UIContext";
 import BackupScreen from "./src/screens/BackupScreen";
 import LockScreen from "./src/screens/LockScreen";
+import { PlannerNavigator } from "./src/screens/planner/PlannerNavigator";
+import { NotificationService } from "./src/services/NotificationService";
 
 const CustomTabBarButton = ({ children, onPress }: any) => (
     <TouchableOpacity
@@ -128,15 +130,27 @@ export default function App() {
   const [ready, setReady] = useState(false);
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(Store.isAuthenticated);
+  const [initialRoute, setInitialRoute] = useState("Home");
   const [isLocked, setIsLocked] = useState(false);
   const appState = useRef(AppState.currentState);
+  const [appMode, setAppMode] = useState(Store.appMode);
 
   useEffect(() => {
     async function prepare() {
       try {
         enableScreens();
         await Store.init();
+        NotificationService.init();
+        await NotificationService.registerForPushNotificationsAsync();
         setIsAuthenticated(Store.isAuthenticated);
+        
+        const defaultView = Store.settings.default_view || 'finance';
+        if (defaultView === 'planner') {
+            Store.setAppMode('planner');
+        } else {
+            Store.setAppMode('finance');
+        }
+
         if (Store.isAuthenticated && Store.settings.lock_enabled) {
             setIsLocked(true);
         }
@@ -150,7 +164,7 @@ export default function App() {
 
     const unsub = Store.subscribe(() => {
         setIsAuthenticated(Store.isAuthenticated);
-        // If user logs out, unlock (so they see login screen)
+        setAppMode(Store.appMode);
         if (!Store.isAuthenticated) {
             setIsLocked(false);
         }
@@ -192,77 +206,80 @@ export default function App() {
   return (
     <UIContext.Provider value={{ showAddModal: () => setAddModalVisible(true) }}>
         <NavigationContainer>
-        <Tab.Navigator
-            tabBarPosition="bottom"
-            tabBar={props => <MyTabBar {...props} onAddPress={() => setAddModalVisible(true)} />}
-            screenOptions={{
-                swipeEnabled: true,
-                tabBarShowLabel: false,
-                tabBarIndicatorStyle: { height: 0 }, // Hide default indicator
-                // Animation settings usually default to pager swipe which is what we want
-            }}
-        >
-           
-            <Tab.Screen 
-                name="Home" 
-                component={HomeScreen} 
-                options={{
-                    tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "home" : "home-outline"} size={24} color={color} />
+        {appMode === 'planner' ? (
+            <PlannerNavigator />
+        ) : (
+            <Tab.Navigator
+                initialRouteName={initialRoute}
+                tabBarPosition="bottom"
+                tabBar={props => <MyTabBar {...props} onAddPress={() => setAddModalVisible(true)} />}
+                screenOptions={{
+                    swipeEnabled: true,
+                    tabBarShowLabel: false,
+                    tabBarIndicatorStyle: { height: 0 },
                 }}
-            />
-            {/* Add screen removed from navigator to avoid swipe landing on it */}
-            <Tab.Screen 
-                name="Charts" 
-                component={ChartsScreen} 
-                options={{
-                    tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "pie-chart" : "pie-chart-outline"} size={24} color={color} />
-                }}
-            />
+            >
+                <Tab.Screen 
+                    name="Home" 
+                    component={HomeScreen} 
+                    options={{
+                        tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "home" : "home-outline"} size={24} color={color} />
+                    }}
+                />
+
+                <Tab.Screen 
+                    name="List" 
+                    component={ListScreen} 
+                    options={{
+                        tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "wallet" : "wallet-outline"} size={24} color={color} />
+                    }}
+                />
+
+                <Tab.Screen 
+                    name="Charts" 
+                    component={ChartsScreen} 
+                    options={{
+                        tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "pie-chart" : "pie-chart-outline"} size={24} color={color} />
+                    }}
+                />
+                
+                <Tab.Screen 
+                    name="Report" 
+                    component={ReportScreen} 
+                    options={{
+                        tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "document-text" : "document-text-outline"} size={24} color={color} />
+                    }}
+                />
             
-            <Tab.Screen 
-                name="List" 
-                component={ListScreen} 
-                options={{
-                    tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "wallet" : "wallet-outline"} size={24} color={color} />
-                }}
-            />
-            
-            <Tab.Screen 
-                name="Report" 
-                component={ReportScreen} 
-                options={{
-                    tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "document-text" : "document-text-outline"} size={24} color={color} />
-                }}
-            />
-         
-            {isAuthenticated ? (
-            <Tab.Screen 
-                name="Settings" 
-                component={SettingsScreen} 
-                options={{
-                    tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "person" : "person-outline"} size={24} color={color} />
-                }}
-            />
-            ) : (
-            <Tab.Screen 
-                name="Login" 
-                component={AuthScreen} 
-                options={{
-                    tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "log-in" : "log-in-outline"} size={24} color={color} />,
-                    tabBarStyle: { display: "none" },
-                }}
-            />
-            )}
-            {isAuthenticated && (
-            <Tab.Screen 
-                name="Backup" 
-                component={BackupScreen} 
-                options={{
-                    tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "cloud-upload" : "cloud-upload-outline"} size={24} color={color} />
-                }}
-            />
-            )}
-        </Tab.Navigator>
+                {isAuthenticated ? (
+                <Tab.Screen 
+                    name="Settings" 
+                    component={SettingsScreen} 
+                    options={{
+                        tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "person" : "person-outline"} size={24} color={color} />
+                    }}
+                />
+                ) : (
+                <Tab.Screen 
+                    name="Login" 
+                    component={AuthScreen} 
+                    options={{
+                        tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "log-in" : "log-in-outline"} size={24} color={color} />,
+                        tabBarStyle: { display: "none" },
+                    }}
+                />
+                )}
+                {isAuthenticated && (
+                <Tab.Screen 
+                    name="Backup" 
+                    component={BackupScreen} 
+                    options={{
+                        tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "cloud-upload" : "cloud-upload-outline"} size={24} color={color} />
+                    }}
+                />
+                )}
+            </Tab.Navigator>
+        )}
         </NavigationContainer>
         
         <AddRecordModal 
@@ -270,9 +287,6 @@ export default function App() {
             onClose={() => setAddModalVisible(false)} 
             onSave={() => setAddModalVisible(false)}
         />
-        {/* <Modal visible={authModalVisible} animationType="slide" presentationStyle="fullScreen" onRequestClose={() => Store.setAuthModalVisible(false)}>
-            <AuthScreen onClose={() => Store.setAuthModalVisible(false)} />
-        </Modal> */}
     </UIContext.Provider>
   );
 }

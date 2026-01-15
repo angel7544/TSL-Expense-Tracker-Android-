@@ -2,6 +2,40 @@ import * as SQLite from 'expo-sqlite';
 import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 
+export interface Budget {
+  id?: number;
+  category: string;
+  amount: number;
+  period: 'monthly' | 'yearly';
+  month?: string; // "01", "02" etc.
+  year: string; // "2024"
+}
+
+export interface BudgetSplit {
+  id?: number;
+  budget_id: number;
+  name: string;
+  amount: number;
+}
+
+export interface Todo {
+  id?: number;
+  text: string;
+  is_completed: boolean;
+  due_date?: string; // YYYY-MM-DD
+  due_time?: string; // HH:mm
+  notification_id?: string;
+}
+
+export interface Note {
+  id?: number;
+  title: string;
+  content: string;
+  created_at: string;
+  image_uri?: string;
+  is_important?: boolean;
+}
+
 export interface ExpenseRecord {
   id?: number;
   expense_date: string;
@@ -18,6 +52,7 @@ export interface ExpenseRecord {
 export interface Settings {
     biometrics_enabled: boolean | undefined;
     lock_enabled: boolean | undefined;
+    lock_pin: string;
     quick_load_files: string[];
     admin_name: string;
     admin_role: string;
@@ -27,6 +62,7 @@ export interface Settings {
     company_logo: string;
     company_contact: string;
     pdf_page_size: 'A4' | 'A5';
+    default_view: 'finance' | 'planner';
 }
 
 export interface FilterOptions {
@@ -48,7 +84,8 @@ const defaultSettings: Settings = {
   pdf_page_size: 'A4',
   biometrics_enabled: false,
   lock_enabled: undefined,
-  lock_pin: ""
+  lock_pin: "",
+  default_view: 'finance'
 };
 
 function toBal(r: ExpenseRecord) {
@@ -72,7 +109,13 @@ export const Store = {
   users: { admin: "admin123" } as Record<string, string>,
   isAuthenticated: false,
   authModalVisible: false,
+  appMode: 'finance' as 'finance' | 'planner',
   listeners: [] as (() => void)[],
+
+  setAppMode(mode: 'finance' | 'planner') {
+    this.appMode = mode;
+    this.notify();
+  },
 
   async setAuthenticated(status: boolean) {
       this.isAuthenticated = status;
@@ -122,7 +165,8 @@ export const Store = {
     await this.loadUsers();
 
     if (Platform.OS !== 'web' && db) {
-      db.execAsync(
+      // Create Expenses Table
+      await db.execAsync(
         `CREATE TABLE IF NOT EXISTS expenses (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             expense_date TEXT,
@@ -134,7 +178,62 @@ export const Store = {
             expense_amount REAL,
             report_name TEXT
         );`
-      ).catch(err => console.error("DB Init Error", err));
+      ).catch(err => console.error("DB Init Error (expenses)", err));
+
+      // Create Budgets Table
+      await db.execAsync(
+        `CREATE TABLE IF NOT EXISTS budgets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            category TEXT,
+            amount REAL,
+            period TEXT,
+            month TEXT,
+            year TEXT
+        );`
+      ).catch(err => console.error("DB Init Error (budgets)", err));
+
+      // Create Todos Table
+      await db.execAsync(
+        `CREATE TABLE IF NOT EXISTS todos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            text TEXT,
+            is_completed INTEGER,
+            due_date TEXT,
+            due_time TEXT,
+            notification_id TEXT
+        );`
+      ).catch(err => console.error("DB Init Error (todos)", err));
+
+      // Simple migration for existing todos table (add columns if missing)
+      // This is a bit hacky but works for simple apps. 
+      // Better way is to version DB.
+      try {
+        await db.execAsync("ALTER TABLE todos ADD COLUMN due_time TEXT;");
+      } catch (e) { /* ignore if exists */ }
+      try {
+        await db.execAsync("ALTER TABLE todos ADD COLUMN notification_id TEXT;");
+      } catch (e) { /* ignore if exists */ }
+
+      // Create Notes Table
+      await db.execAsync(
+            `CREATE TABLE IF NOT EXISTS notes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT,
+                content TEXT,
+                created_at TEXT,
+                image_uri TEXT,
+                is_important INTEGER
+            );`
+        ).catch(err => console.error("DB Init Error (notes)", err));
+
+      // Migrations for Notes
+      try {
+        await db.execAsync("ALTER TABLE notes ADD COLUMN image_uri TEXT;");
+      } catch (e) { /* ignore */ }
+      try {
+        await db.execAsync("ALTER TABLE notes ADD COLUMN is_important INTEGER;");
+      } catch (e) { /* ignore */ }
+
     } else {
       webRecords = [];
     }
@@ -274,7 +373,47 @@ export const Store = {
               expense_amount REAL,
               report_name TEXT
           );`
-        ).catch(err => console.error("DB Init Error", err));
+        ).catch(err => console.error("DB Init Error (expenses)", err));
+
+        await db.execAsync(
+            `CREATE TABLE IF NOT EXISTS budgets (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                category TEXT,
+                amount REAL,
+                period TEXT,
+                month TEXT,
+                year TEXT
+            );`
+        ).catch(err => console.error("DB Init Error (budgets)", err));
+        
+        await db.execAsync(
+            `CREATE TABLE IF NOT EXISTS budget_splits (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                budget_id INTEGER,
+                name TEXT,
+                amount REAL
+            );`
+        ).catch(err => console.error("DB Init Error (budget_splits)", err));
+    
+        await db.execAsync(
+            `CREATE TABLE IF NOT EXISTS todos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                text TEXT,
+                is_completed INTEGER,
+                due_date TEXT,
+                due_time TEXT,
+                notification_id TEXT
+            );`
+        ).catch(err => console.error("DB Init Error (todos)", err));
+    
+        await db.execAsync(
+            `CREATE TABLE IF NOT EXISTS notes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT,
+                content TEXT,
+                created_at TEXT
+            );`
+        ).catch(err => console.error("DB Init Error (notes)", err));
       }
   },
 
@@ -557,5 +696,161 @@ export const Store = {
       ].join(",")
     ).join("\n");
     return header + rows;
+  },
+
+  // --- Budgets ---
+  async getBudgets(year: string, month: string): Promise<Budget[]> {
+      if (Platform.OS === 'web' || !db) return [];
+      try {
+          return await db.getAllAsync<Budget>(
+              "SELECT * FROM budgets WHERE year = ? AND (period = 'yearly' OR (period = 'monthly' AND month = ?))",
+              [year, month]
+          );
+      } catch (e) { console.error("getBudgets", e); return []; }
+  },
+
+  async saveBudget(budget: Budget) {
+      if (Platform.OS === 'web' || !db) return;
+      try {
+          if (budget.id) {
+              await db.runAsync(
+                  "UPDATE budgets SET category = ?, amount = ?, period = ?, month = ?, year = ? WHERE id = ?",
+                  [budget.category, budget.amount, budget.period, budget.month || "", budget.year, budget.id]
+              );
+          } else {
+              await db.runAsync(
+                  "INSERT INTO budgets (category, amount, period, month, year) VALUES (?, ?, ?, ?, ?)",
+                  [budget.category, budget.amount, budget.period, budget.month || "", budget.year]
+              );
+          }
+          this.notify();
+      } catch (e) { console.error("saveBudget", e); }
+  },
+
+  async deleteBudget(id: number) {
+      if (Platform.OS === 'web' || !db) return;
+      try {
+          await db.runAsync("DELETE FROM budget_splits WHERE budget_id = ?", [id]);
+          await db.runAsync("DELETE FROM budgets WHERE id = ?", [id]);
+          this.notify();
+      } catch (e) { console.error("deleteBudget", e); }
+  },
+
+  async getBudgetSplits(budgetId: number): Promise<BudgetSplit[]> {
+      if (Platform.OS === 'web' || !db) return [];
+      try {
+          return await db.getAllAsync<BudgetSplit>(
+              "SELECT * FROM budget_splits WHERE budget_id = ? ORDER BY id ASC",
+              [budgetId]
+          );
+      } catch (e) { console.error("getBudgetSplits", e); return []; }
+  },
+
+  async saveBudgetSplit(split: BudgetSplit) {
+      if (Platform.OS === 'web' || !db) return;
+      try {
+          if (split.id) {
+              await db.runAsync(
+                  "UPDATE budget_splits SET budget_id = ?, name = ?, amount = ? WHERE id = ?",
+                  [split.budget_id, split.name, split.amount, split.id]
+              );
+          } else {
+              await db.runAsync(
+                  "INSERT INTO budget_splits (budget_id, name, amount) VALUES (?, ?, ?)",
+                  [split.budget_id, split.name, split.amount]
+              );
+          }
+          this.notify();
+      } catch (e) { console.error("saveBudgetSplit", e); }
+  },
+
+  async deleteBudgetSplit(id: number) {
+      if (Platform.OS === 'web' || !db) return;
+      try {
+          await db.runAsync("DELETE FROM budget_splits WHERE id = ?", [id]);
+          this.notify();
+      } catch (e) { console.error("deleteBudgetSplit", e); }
+  },
+
+  async replaceBudgetSplits(budgetId: number, splits: { name: string; amount: number }[]) {
+      if (Platform.OS === 'web' || !db) return;
+      try {
+          await db.runAsync("DELETE FROM budget_splits WHERE budget_id = ?", [budgetId]);
+          for (const s of splits) {
+              await db.runAsync(
+                  "INSERT INTO budget_splits (budget_id, name, amount) VALUES (?, ?, ?)",
+                  [budgetId, s.name, s.amount]
+              );
+          }
+          this.notify();
+      } catch (e) { console.error("replaceBudgetSplits", e); }
+  },
+
+  // --- Todos ---
+  async getTodos(): Promise<Todo[]> {
+      if (Platform.OS === 'web' || !db) return [];
+      try {
+          return await db.getAllAsync<Todo>("SELECT * FROM todos ORDER BY is_completed ASC, id DESC");
+      } catch (e) { console.error("getTodos", e); return []; }
+  },
+
+  async saveTodo(todo: Todo) {
+      if (Platform.OS === 'web' || !db) return;
+      try {
+          if (todo.id) {
+              await db.runAsync(
+                  "UPDATE todos SET text = ?, is_completed = ?, due_date = ?, due_time = ?, notification_id = ? WHERE id = ?",
+                  [todo.text, todo.is_completed ? 1 : 0, todo.due_date || "", todo.due_time || "", todo.notification_id || "", todo.id]
+              );
+          } else {
+              await db.runAsync(
+                  "INSERT INTO todos (text, is_completed, due_date, due_time, notification_id) VALUES (?, ?, ?, ?, ?)",
+                  [todo.text, todo.is_completed ? 1 : 0, todo.due_date || "", todo.due_time || "", todo.notification_id || ""]
+              );
+          }
+          this.notify();
+      } catch (e) { console.error("saveTodo", e); }
+  },
+
+  async deleteTodo(id: number) {
+      if (Platform.OS === 'web' || !db) return;
+      try {
+          await db.runAsync("DELETE FROM todos WHERE id = ?", [id]);
+          this.notify();
+      } catch (e) { console.error("deleteTodo", e); }
+  },
+
+  // --- Notes ---
+  async getNotes(): Promise<Note[]> {
+      if (Platform.OS === 'web' || !db) return [];
+      try {
+          return await db.getAllAsync<Note>("SELECT * FROM notes ORDER BY created_at DESC");
+      } catch (e) { console.error("getNotes", e); return []; }
+  },
+
+  async saveNote(note: Note) {
+      if (Platform.OS === 'web' || !db) return;
+      try {
+          if (note.id) {
+              await db.runAsync(
+                  "UPDATE notes SET title = ?, content = ?, created_at = ?, image_uri = ?, is_important = ? WHERE id = ?",
+                  [note.title, note.content, note.created_at, note.image_uri || "", note.is_important ? 1 : 0, note.id]
+              );
+          } else {
+              await db.runAsync(
+                  "INSERT INTO notes (title, content, created_at, image_uri, is_important) VALUES (?, ?, ?, ?, ?)",
+                  [note.title, note.content, note.created_at, note.image_uri || "", note.is_important ? 1 : 0]
+              );
+          }
+          this.notify();
+      } catch (e) { console.error("saveNote", e); }
+  },
+
+  async deleteNote(id: number) {
+      if (Platform.OS === 'web' || !db) return;
+      try {
+          await db.runAsync("DELETE FROM notes WHERE id = ?", [id]);
+          this.notify();
+      } catch (e) { console.error("deleteNote", e); }
   }
 };

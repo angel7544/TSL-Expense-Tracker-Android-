@@ -174,7 +174,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             </Text>
             
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
-                <Text style={{ fontSize: 14, color: '#666' }}>Total Records: <Text style={{ fontWeight: 'bold', color: '#333' }}>{summary.inc + summary.exp}</Text></Text>
+                <Text style={{ fontSize: 14, color: '#666' }}>Total Records: <Text style={{ fontWeight: 'bold', color: '#333' }}>{summary.count}</Text></Text>
             </View>
 
             <View style={styles.progressSection}>

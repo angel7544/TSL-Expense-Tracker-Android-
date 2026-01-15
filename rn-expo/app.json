@@ -28,6 +28,15 @@
     },
     "web": {
       "bundler": "metro"
-    }
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/tsl_icon.png",
+          "color": "#ffffff"
+        }
+      ]
+    ]
   }
 }

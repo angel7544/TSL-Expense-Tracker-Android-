@@ -231,9 +231,12 @@ export const AddRecordModal = ({ visible, onClose, onSave, record }: AddRecordMo
                 value={form.expense_category}
                 onChangeText={t => setForm({ ...form, expense_category: t })}
                 onFocus={() => setShowCatSuggestions(true)}
-                onBlur={() => setTimeout(() => setShowCatSuggestions(false), 200)}
+                onBlur={() => setTimeout(() => setShowCatSuggestions(false), 500)}
                 suggestions={suggestions.categories.filter(c => c.toLowerCase().includes(form.expense_category.toLowerCase()))}
-                onSelect={c => setForm({ ...form, expense_category: c })}
+                onSelect={c => {
+                    setForm({ ...form, expense_category: c });
+                    setShowCatSuggestions(false);
+                }}
                 showSuggestions={showCatSuggestions}
                 zIndex={30}
             />
@@ -243,9 +246,12 @@ export const AddRecordModal = ({ visible, onClose, onSave, record }: AddRecordMo
                 value={form.merchant_name}
                 onChangeText={t => setForm({ ...form, merchant_name: t })}
                 onFocus={() => setShowMerchantSuggestions(true)}
-                onBlur={() => setTimeout(() => setShowMerchantSuggestions(false), 200)}
+                onBlur={() => setTimeout(() => setShowMerchantSuggestions(false), 500)}
                 suggestions={suggestions.merchants.filter(c => c.toLowerCase().includes(form.merchant_name.toLowerCase()))}
-                onSelect={c => setForm({ ...form, merchant_name: c })}
+                onSelect={c => {
+                    setForm({ ...form, merchant_name: c });
+                    setShowMerchantSuggestions(false);
+                }}
                 showSuggestions={showMerchantSuggestions}
                 zIndex={20}
             />
@@ -255,9 +261,12 @@ export const AddRecordModal = ({ visible, onClose, onSave, record }: AddRecordMo
                 value={form.paid_through}
                 onChangeText={t => setForm({ ...form, paid_through: t })}
                 onFocus={() => setShowPaidSuggestions(true)}
-                onBlur={() => setTimeout(() => setShowPaidSuggestions(false), 200)}
+                onBlur={() => setTimeout(() => setShowPaidSuggestions(false), 500)}
                 suggestions={suggestions.paidThrough.filter(c => c.toLowerCase().includes(form.paid_through.toLowerCase()))}
-                onSelect={c => setForm({ ...form, paid_through: c })}
+                onSelect={c => {
+                    setForm({ ...form, paid_through: c });
+                    setShowPaidSuggestions(false);
+                }}
                 showSuggestions={showPaidSuggestions}
                 zIndex={10}
             />

@@ -1,7 +1,8 @@
-import React from 'react';
-import { View, Text, Modal, TouchableOpacity, Image, Linking, StyleSheet, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, Modal, TouchableOpacity, Image, Linking, StyleSheet, Platform, Switch } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
+import { Store } from '../data/Store';
 
 interface InfoModalProps {
     visible: boolean;
@@ -11,6 +12,16 @@ interface InfoModalProps {
 
 export const InfoModal = ({ visible, onClose, logoUri }: InfoModalProps) => {
     const openLink = (url: string) => Linking.openURL(url).catch(err => console.error("Couldn't load page", err));
+    const [isPlannerMode, setIsPlannerMode] = useState(Store.appMode === 'planner');
+
+    useEffect(() => {
+        setIsPlannerMode(Store.appMode === 'planner');
+    }, [visible]);
+
+    const toggleMode = (value: boolean) => {
+        setIsPlannerMode(value);
+        Store.setAppMode(value ? 'planner' : 'finance');
+    };
 
     return (
         <Modal
@@ -38,6 +49,17 @@ export const InfoModal = ({ visible, onClose, logoUri }: InfoModalProps) => {
                     <Text style={styles.modalTitle}>BR31 Expense Tracker</Text>
                     <Text style={styles.modalVersion}>Version 2.5.0</Text>
                     
+                    <View style={styles.modeContainer}>
+                        <Text style={styles.modeLabel}>Planner Mode</Text>
+                        <Switch
+                            trackColor={{ false: "#767577", true: "#81b0ff" }}
+                            thumbColor={isPlannerMode ? "#007bff" : "#f4f3f4"}
+                            ios_backgroundColor="#3e3e3e"
+                            onValueChange={toggleMode}
+                            value={isPlannerMode}
+                        />
+                    </View>
+
                     <Text style={styles.devLabel}>Developed by</Text>
                     <Text style={styles.devName}>Angel (Mehul) Singh</Text>
                     <Text style={styles.companyName}>BR31TECHNOLOGIES</Text>
@@ -117,6 +139,21 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#666',
         marginBottom: 20,
+    },
+    modeContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 20,
+        backgroundColor: '#F3F4F6',
+        padding: 10,
+        borderRadius: 12,
+        width: '100%',
+        justifyContent: 'space-between',
+    },
+    modeLabel: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#333',
     },
     devLabel: {
         fontSize: 12,

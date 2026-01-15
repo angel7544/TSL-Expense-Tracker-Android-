@@ -292,6 +292,26 @@ export default function SettingsScreen({ navigation }: any) {
          </View>
 
          <View style={{ height: 20 }} />
+         <Text style={styles.fieldLabel}>Default Start Screen</Text>
+         <View style={{ flexDirection: "row", marginTop: 10 }}>
+            {['finance', 'planner'].map((mode) => (
+                <TouchableOpacity 
+                    key={mode}
+                    onPress={() => updateSetting("default_view", mode as any)}
+                    style={[
+                        styles.sizeOption, 
+                        settings.default_view === mode && styles.sizeOptionActive
+                    ]}
+                >
+                    <Text style={[
+                        styles.sizeOptionText,
+                        settings.default_view === mode && styles.sizeOptionTextActive
+                    ]}>{mode === 'finance' ? 'Expense Tracker' : 'Planner'}</Text>
+                </TouchableOpacity>
+            ))}
+         </View>
+
+         <View style={{ height: 20 }} />
          <Text style={styles.fieldLabel}>PDF Page Format</Text>
          <View style={{ flexDirection: "row", marginTop: 10 }}>
             {['A4', 'A5'].map((size) => (
