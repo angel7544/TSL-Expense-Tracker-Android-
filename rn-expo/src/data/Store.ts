@@ -356,83 +356,49 @@ export const Store = {
     const frequency = currentSettings.backup_frequency || 'monthly';
     const backupTime = currentSettings.backup_time || "00:00";
 
-    // Check time of day
     const [th, tm] = backupTime.split(':').map(Number);
-    const targetTimeToday = new Date(now);
-    targetTimeToday.setHours(th, tm, 0, 0);
+    
+    let shouldRun = false;
 
-    if (now < targetTimeToday) return;
-
-    let due = false;
     if (!lastRun) {
-      due = true;
+        // First run: only if we are past the scheduled time today
+        const targetTimeToday = new Date(now);
+        targetTimeToday.setHours(th, tm, 0, 0);
+        if (now >= targetTimeToday) {
+            shouldRun = true;
+        }
     } else {
-      const lastRunDate = new Date(lastRun);
-      lastRunDate.setHours(0,0,0,0);
-      const todayDate = new Date(now);
-      todayDate.setHours(0,0,0,0);
-      
-      const diffTime = todayDate.getTime() - lastRunDate.getTime();
-      const diffDays = diffTime / (1000 * 60 * 60 * 24);
-
-      if (frequency === 'daily') {
-        due = diffDays >= 1;
-      } else if (frequency === 'weekly') {
-        due = diffDays >= 7;
-      } else {
-        const yearDiff = todayDate.getFullYear() - lastRunDate.getFullYear();
-        const monthDiff = todayDate.getMonth() - lastRunDate.getMonth() + yearDiff * 12;
-        due = monthDiff >= 1;
-      }
-    }
-
-    if (!due) return;
-
-    const dateLabel = now.toISOString().split('T')[0];
-    const originalDb = this.currentDbName || "tsl_expenses.db";
-
-    const allDbs: { name: string; dbName: string }[] = [
-      { name: "Default", dbName: "tsl_expenses.db" }
-    ];
-
-    try {
-      const recent = await this.getRecentDatabases();
-      for (const r of recent) {
-        if (!allDbs.find(x => x.dbName === r.dbName)) {
-          allDbs.push({ name: r.name || r.dbName, dbName: r.dbName });
+        // Calculate next scheduled run based on last run
+        const nextRun = new Date(lastRun);
+        nextRun.setHours(th, tm, 0, 0); // Align to target time of day
+        
+        if (frequency === 'daily') {
+            nextRun.setDate(nextRun.getDate() + 1);
+        } else if (frequency === 'weekly') {
+            nextRun.setDate(nextRun.getDate() + 7);
+        } else {
+            // monthly
+            nextRun.setMonth(nextRun.getMonth() + 1);
         }
-      }
-    } catch (e) {
-      console.error("Failed to load recent DBs for auto backup", e);
-    }
-
-    for (const entry of allDbs) {
-      try {
-        if (entry.dbName !== this.currentDbName) {
-          await this.switchDatabase(entry.dbName);
+        
+        // If we are past the next scheduled run, do it
+        if (now >= nextRun) {
+            shouldRun = true;
         }
-        const dbLabel = entry.name || entry.dbName;
-        const name = `${dbLabel} | Auto ${frequency} ${dateLabel}`;
-        await this.createJsonBackup(name);
-      } catch (e) {
-        console.error("Auto backup failed for", entry.dbName, e);
-      }
     }
 
-    if (originalDb !== this.currentDbName) {
-      try {
-        await this.switchDatabase(originalDb);
-      } catch (e) {
-        console.error("Failed to restore original DB after auto backup", e);
-      }
-    }
+    if (!shouldRun) return;
 
+    await this._executeBackupLoop(`Auto ${frequency}`);
     await this.setSettings({ backup_last_run: now.toISOString() });
   },
 
   async runManualBackupNow() {
     if (Platform.OS === 'web') return { created: 0, failed: 0 };
+    return await this._executeBackupLoop('Manual');
+  },
 
+  async _executeBackupLoop(tagPrefix: string) {
     const now = new Date();
     const dateLabel = now.toISOString().split('T')[0];
     const originalDb = this.currentDbName || "tsl_expenses.db";
@@ -449,7 +415,7 @@ export const Store = {
         }
       }
     } catch (e) {
-      console.error("Failed to load recent DBs for manual backup", e);
+      console.error("Failed to load recent DBs for backup loop", e);
     }
 
     let created = 0;
@@ -461,11 +427,11 @@ export const Store = {
           await this.switchDatabase(entry.dbName);
         }
         const dbLabel = entry.name || entry.dbName;
-        const name = `${dbLabel} | Manual ${dateLabel}`;
+        const name = `${dbLabel} | ${tagPrefix} ${dateLabel}`;
         await this.createJsonBackup(name);
         created++;
       } catch (e) {
-        console.error("Manual backup failed for", entry.dbName, e);
+        console.error(`Backup failed for ${entry.dbName}`, e);
         failed++;
       }
     }
@@ -474,10 +440,10 @@ export const Store = {
       try {
         await this.switchDatabase(originalDb);
       } catch (e) {
-        console.error("Failed to restore original DB after manual backup", e);
+        console.error("Failed to restore original DB after backup loop", e);
       }
     }
-
+    
     return { created, failed };
   },
 
