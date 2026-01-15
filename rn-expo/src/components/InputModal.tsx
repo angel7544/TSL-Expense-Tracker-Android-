@@ -12,6 +12,9 @@ interface InputModalProps {
     onClose: () => void;
     onSubmit: (value: string) => void;
     submitLabel?: string;
+    secureTextEntry?: boolean;
+    keyboardType?: 'default' | 'number-pad' | 'decimal-pad' | 'numeric' | 'email-address' | 'phone-pad';
+    maxLength?: number;
 }
 
 export const InputModal = ({ 
@@ -22,7 +25,10 @@ export const InputModal = ({
     initialValue = "", 
     onClose, 
     onSubmit,
-    submitLabel = "Save"
+    submitLabel = "Save",
+    secureTextEntry = false,
+    keyboardType = 'default',
+    maxLength
 }: InputModalProps) => {
     const [value, setValue] = useState(initialValue);
 
@@ -67,6 +73,9 @@ export const InputModal = ({
                             onChangeText={setValue}
                             autoFocus={true}
                             onSubmitEditing={handleSubmit}
+                            secureTextEntry={secureTextEntry}
+                            keyboardType={keyboardType}
+                            maxLength={maxLength}
                         />
 
                         <View style={styles.buttonRow}>

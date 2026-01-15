@@ -1,8 +1,9 @@
-import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, Alert, ScrollView, StyleSheet, Platform, Image, Dimensions, KeyboardAvoidingView } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, Text, TextInput, TouchableOpacity, Alert, ScrollView, StyleSheet, Platform, Image, Dimensions, KeyboardAvoidingView, Switch } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
+import * as LocalAuthentication from 'expo-local-authentication';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { Store } from "../data/Store";
@@ -21,15 +22,25 @@ export default function SettingsScreen({ navigation }: any) {
   const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
   const [exportModalVisible, setExportModalVisible] = useState(false);
   const [infoModalVisible, setInfoModalVisible] = useState(false);
+  const [pinModalVisible, setPinModalVisible] = useState(false);
+  const [pinMode, setPinMode] = useState<'enable' | 'change'>('enable');
+  const [biometricsAvailable, setBiometricsAvailable] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
       const unsub = Store.subscribe(() => {
           setIsAuthenticated(Store.isAuthenticated);
       });
+      checkBiometrics();
       return unsub;
   }, []);
 
-  const updateSetting = (k: string, v: string) => setSettings({ ...settings, [k]: v });
+  const checkBiometrics = async () => {
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+      setBiometricsAvailable(hasHardware && isEnrolled);
+  };
+
+  const updateSetting = (k: string, v: string | boolean) => setSettings({ ...settings, [k]: v });
 
   const saveSettings = () => {
     Store.setSettings(settings);
@@ -131,6 +142,46 @@ export default function SettingsScreen({ navigation }: any) {
   };
 
 
+
+  const toggleLock = (value: boolean) => {
+    if (value) {
+      setPinMode('enable');
+      setPinModalVisible(true);
+    } else {
+      const newSettings = { ...settings, lock_enabled: false };
+      setSettings(newSettings);
+      Store.setSettings(newSettings);
+    }
+  };
+
+  const toggleBiometrics = (value: boolean) => {
+      const newSettings = { ...settings, biometrics_enabled: value };
+      setSettings(newSettings);
+      Store.setSettings(newSettings);
+  };
+
+  const changePin = () => {
+    setPinMode('change');
+    setPinModalVisible(true);
+  };
+
+  const handlePinSubmit = (pin: string) => {
+    if (pin.length !== 4) {
+      Alert.alert("Error", "PIN must be 4 digits");
+      return;
+    }
+    
+    const newSettings = { 
+      ...settings, 
+      lock_enabled: true, 
+      lock_pin: pin 
+    };
+    setSettings(newSettings);
+    Store.setSettings(newSettings);
+    
+    setPinModalVisible(false);
+    Alert.alert("Success", pinMode === 'enable' ? "App Lock enabled" : "PIN updated");
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: "#F3F4F6" }}>
@@ -281,6 +332,61 @@ export default function SettingsScreen({ navigation }: any) {
       <View style={styles.modernCard}>
           <View style={styles.fieldRow}>
               <View style={styles.fieldIcon}>
+                  <Ionicons name="lock-closed-outline" size={20} color="#4F46E5" />
+              </View>
+              <View style={{ flex: 1 }}>
+                  <Text style={styles.fieldLabel}>App Lock</Text>
+                  <Text style={styles.actionSubtitle}>Require PIN to open app</Text>
+              </View>
+              <Switch 
+                  value={settings.lock_enabled} 
+                  onValueChange={toggleLock}
+                  trackColor={{ false: "#D1D5DB", true: "#4F46E5" }}
+                  thumbColor={"#fff"}
+              />
+          </View>
+
+          {settings.lock_enabled && (
+            <>
+                <View style={styles.separator} />
+                <TouchableOpacity onPress={changePin} style={styles.fieldRow}>
+                    <View style={styles.fieldIcon}>
+                        <Ionicons name="keypad-outline" size={20} color="#4F46E5" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                        <Text style={styles.fieldLabel}>Change PIN</Text>
+                        <Text style={styles.actionSubtitle}>Update your 4-digit PIN</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
+                </TouchableOpacity>
+
+                {biometricsAvailable && (
+                    <>
+                        <View style={styles.separator} />
+                        <View style={styles.fieldRow}>
+                            <View style={styles.fieldIcon}>
+                                <Ionicons name="finger-print-outline" size={20} color="#4F46E5" />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.fieldLabel}>Biometrics</Text>
+                                <Text style={styles.actionSubtitle}>Use Fingerprint/FaceID</Text>
+                            </View>
+                            <Switch 
+                                value={!!settings.biometrics_enabled} 
+                                onValueChange={toggleBiometrics}
+                                trackColor={{ false: "#D1D5DB", true: "#4F46E5" }}
+                                thumbColor={"#fff"}
+                            />
+                        </View>
+                    </>
+                )}
+            </>
+          )}
+
+          <View style={styles.separator} />
+
+          <View style={styles.fieldRow}>
+              <View style={styles.fieldIcon}>
                   <Ionicons name="key-outline" size={20} color="#F59E0B" />
               </View>
               <View style={{ flex: 1 }}>
@@ -358,6 +464,20 @@ export default function SettingsScreen({ navigation }: any) {
         onClose={() => setExportModalVisible(false)}
         onSubmit={handleExportSubmit}
         submitLabel="Export"
+      />
+
+      <InputModal
+        visible={pinModalVisible}
+        title={pinMode === 'enable' ? "Set App PIN" : "Change PIN"}
+        message="Enter a 4-digit numeric PIN"
+        placeholder="1234"
+        initialValue=""
+        onClose={() => setPinModalVisible(false)}
+        onSubmit={handlePinSubmit}
+        submitLabel="Save"
+        secureTextEntry={true}
+        keyboardType="numeric"
+        maxLength={4}
       />
 
       <InfoModal 

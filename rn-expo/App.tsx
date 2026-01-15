@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { View, ActivityIndicator, TouchableOpacity, StyleSheet, Text, Modal } from "react-native";
+import React, { useState, useEffect, useRef } from "react";
+import { View, ActivityIndicator, TouchableOpacity, StyleSheet, Text, Modal, AppState } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createMaterialTopTabNavigator } from "@react-navigation/material-top-tabs";
 import { enableScreens } from "react-native-screens";
@@ -14,6 +14,7 @@ import { AddRecordModal } from "./src/components/AddRecordModal";
 import { Store } from "./src/data/Store";
 import { UIContext } from "./src/context/UIContext";
 import BackupScreen from "./src/screens/BackupScreen";
+import LockScreen from "./src/screens/LockScreen";
 
 const CustomTabBarButton = ({ children, onPress }: any) => (
     <TouchableOpacity
@@ -127,14 +128,18 @@ export default function App() {
   const [ready, setReady] = useState(false);
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(Store.isAuthenticated);
-  // authModalVisible is no longer needed since we use tab navigation for auth
-  // const [authModalVisible, setAuthModalVisible] = useState(Store.authModalVisible);
+  const [isLocked, setIsLocked] = useState(false);
+  const appState = useRef(AppState.currentState);
 
   useEffect(() => {
     async function prepare() {
       try {
         enableScreens();
         await Store.init();
+        setIsAuthenticated(Store.isAuthenticated);
+        if (Store.isAuthenticated && Store.settings.lock_enabled) {
+            setIsLocked(true);
+        }
       } catch (e) {
         console.warn(e);
       } finally {
@@ -145,9 +150,29 @@ export default function App() {
 
     const unsub = Store.subscribe(() => {
         setIsAuthenticated(Store.isAuthenticated);
-        // setAuthModalVisible(Store.authModalVisible);
+        // If user logs out, unlock (so they see login screen)
+        if (!Store.isAuthenticated) {
+            setIsLocked(false);
+        }
     });
-    return unsub;
+
+    const subscription = AppState.addEventListener('change', nextAppState => {
+        if (
+            appState.current.match(/inactive|background/) &&
+            nextAppState === 'active'
+        ) {
+            // App has come to the foreground
+            if (Store.isAuthenticated && Store.settings.lock_enabled) {
+                setIsLocked(true);
+            }
+        }
+        appState.current = nextAppState;
+    });
+
+    return () => {
+        unsub();
+        subscription.remove();
+    };
   }, []);
 
   if (!ready) {
@@ -156,6 +181,10 @@ export default function App() {
         <ActivityIndicator size="large" color="#007bff" />
       </View>
     );
+  }
+
+  if (isLocked && isAuthenticated) {
+      return <LockScreen onUnlock={() => setIsLocked(false)} />;
   }
 
   const Tab = createMaterialTopTabNavigator();
@@ -197,7 +226,7 @@ export default function App() {
                     tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "wallet" : "wallet-outline"} size={24} color={color} />
                 }}
             />
-            {isAuthenticated && (
+            
             <Tab.Screen 
                 name="Report" 
                 component={ReportScreen} 
@@ -205,7 +234,7 @@ export default function App() {
                     tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "document-text" : "document-text-outline"} size={24} color={color} />
                 }}
             />
-            )}
+         
             {isAuthenticated ? (
             <Tab.Screen 
                 name="Settings" 

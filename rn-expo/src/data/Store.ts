@@ -16,6 +16,8 @@ export interface ExpenseRecord {
 }
 
 export interface Settings {
+    biometrics_enabled: boolean | undefined;
+    lock_enabled: boolean | undefined;
     quick_load_files: string[];
     admin_name: string;
     admin_role: string;
@@ -43,7 +45,10 @@ const defaultSettings: Settings = {
   company_name: "The Space Lab",
   company_logo: "",
   company_contact: "",
-  pdf_page_size: 'A4'
+  pdf_page_size: 'A4',
+  biometrics_enabled: false,
+  lock_enabled: undefined,
+  lock_pin: ""
 };
 
 function toBal(r: ExpenseRecord) {
@@ -113,6 +118,7 @@ export const Store = {
   async init() {
     this.settings = { ...defaultSettings };
     await this.loadSettings();
+    await this.loadAuthState();
     await this.loadUsers();
 
     if (Platform.OS !== 'web' && db) {
@@ -132,6 +138,7 @@ export const Store = {
     } else {
       webRecords = [];
     }
+    this.notify();
   },
 
   async loadSettings() {
