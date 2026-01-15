@@ -154,6 +154,7 @@ export default function App() {
         if (Store.isAuthenticated && Store.settings.lock_enabled) {
             setIsLocked(true);
         }
+        await Store.runScheduledBackupIfDue();
       } catch (e) {
         console.warn(e);
       } finally {
@@ -179,6 +180,7 @@ export default function App() {
             if (Store.isAuthenticated && Store.settings.lock_enabled) {
                 setIsLocked(true);
             }
+            Store.runScheduledBackupIfDue();
         }
         appState.current = nextAppState;
     });

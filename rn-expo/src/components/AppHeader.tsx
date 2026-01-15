@@ -128,7 +128,8 @@ export const AppHeader = ({ title, subtitle, showCreateDB = false }: { title?: s
         const dbName = `db_${Date.now()}.db`;
         await Store.switchDatabase(dbName);
         await Store.addRecentDatabase(name, dbName);
-        Alert.alert("Success", `Created new database: ${name}`);
+        const displayName = name.length > 10 ? name.slice(0, 10) : name;
+        Alert.alert("Success", `Created new database: ${displayName}`);
     } catch (e: any) {
         Alert.alert("Error", e.message);
     }

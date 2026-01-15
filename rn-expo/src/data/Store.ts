@@ -56,13 +56,18 @@ export interface Settings {
     quick_load_files: string[];
     admin_name: string;
     admin_role: string;
-    admin_signature: string; // Text signature
-    admin_signature_image?: string; // Image signature (base64)
+    admin_signature: string;
+    admin_signature_image?: string;
     company_name: string;
     company_logo: string;
     company_contact: string;
     pdf_page_size: 'A4' | 'A5';
     default_view: 'finance' | 'planner';
+    backup_enabled?: boolean;
+    backup_frequency?: 'daily' | 'weekly' | 'monthly';
+    backup_time?: string;
+    backup_last_run?: string;
+    primary_db?: string;
 }
 
 export interface FilterOptions {
@@ -85,7 +90,12 @@ const defaultSettings: Settings = {
   biometrics_enabled: false,
   lock_enabled: undefined,
   lock_pin: "",
-  default_view: 'finance'
+  default_view: 'finance',
+  backup_enabled: false,
+  backup_frequency: 'monthly',
+  backup_time: "00:00",
+  backup_last_run: "",
+  primary_db: "tsl_expenses.db"
 };
 
 function toBal(r: ExpenseRecord) {
@@ -103,6 +113,7 @@ if (Platform.OS !== 'web') {
 
 const SETTINGS_FILE = FileSystem.documentDirectory + "settings.json";
 const USERS_FILE = FileSystem.documentDirectory + "users.json";
+const BACKUP_LOG_FILE = FileSystem.documentDirectory + "backup_log.json";
 
 export const Store = {
   settings: { ...defaultSettings },
@@ -110,6 +121,7 @@ export const Store = {
   isAuthenticated: false,
   authModalVisible: false,
   appMode: 'finance' as 'finance' | 'planner',
+  currentDbName: "tsl_expenses.db",
   listeners: [] as (() => void)[],
 
   setAppMode(mode: 'finance' | 'planner') {
@@ -163,6 +175,10 @@ export const Store = {
     await this.loadSettings();
     await this.loadAuthState();
     await this.loadUsers();
+
+    if (this.settings.primary_db && this.settings.primary_db !== "tsl_expenses.db") {
+      await this.switchDatabase(this.settings.primary_db);
+    }
 
     if (Platform.OS !== 'web' && db) {
       // Create Expenses Table
@@ -293,6 +309,178 @@ export const Store = {
     return this.settings;
   },
 
+  async createJsonBackup(name: string) {
+    if (Platform.OS === 'web') return;
+    try {
+      const records = await this.list({});
+      const json = JSON.stringify(records, null, 2);
+      const safeName = name.replace(/[^a-z0-9]/gi, '_') || 'backup';
+      const dbName = this.currentDbName || "tsl_expenses.db";
+      const safeDbName = dbName.replace(/[^a-z0-9]/gi, '_');
+      const filename = `backup_${safeDbName}_${safeName}_${Date.now()}.json`;
+      const uri = FileSystem.documentDirectory + filename;
+
+      await FileSystem.writeAsStringAsync(uri, json);
+
+      let logs: any[] = [];
+      const info = await FileSystem.getInfoAsync(BACKUP_LOG_FILE);
+      if (info.exists) {
+        const content = await FileSystem.readAsStringAsync(BACKUP_LOG_FILE);
+        logs = JSON.parse(content);
+      }
+
+      const newLog = {
+        id: Date.now().toString(),
+        name,
+        filename,
+        date: new Date().toISOString(),
+        recordCount: records.length,
+        uri,
+        dbName
+      };
+
+      logs.unshift(newLog);
+      await FileSystem.writeAsStringAsync(BACKUP_LOG_FILE, JSON.stringify(logs));
+    } catch (e) {
+      console.error("createJsonBackup", e);
+    }
+  },
+
+  async runScheduledBackupIfDue() {
+    if (Platform.OS === 'web') return;
+    const currentSettings = this.getSettings();
+    if (!currentSettings.backup_enabled) return;
+
+    const now = new Date();
+    const lastRun = currentSettings.backup_last_run ? new Date(currentSettings.backup_last_run) : null;
+    const frequency = currentSettings.backup_frequency || 'monthly';
+    const backupTime = currentSettings.backup_time || "00:00";
+
+    // Check time of day
+    const [th, tm] = backupTime.split(':').map(Number);
+    const targetTimeToday = new Date(now);
+    targetTimeToday.setHours(th, tm, 0, 0);
+
+    if (now < targetTimeToday) return;
+
+    let due = false;
+    if (!lastRun) {
+      due = true;
+    } else {
+      const lastRunDate = new Date(lastRun);
+      lastRunDate.setHours(0,0,0,0);
+      const todayDate = new Date(now);
+      todayDate.setHours(0,0,0,0);
+      
+      const diffTime = todayDate.getTime() - lastRunDate.getTime();
+      const diffDays = diffTime / (1000 * 60 * 60 * 24);
+
+      if (frequency === 'daily') {
+        due = diffDays >= 1;
+      } else if (frequency === 'weekly') {
+        due = diffDays >= 7;
+      } else {
+        const yearDiff = todayDate.getFullYear() - lastRunDate.getFullYear();
+        const monthDiff = todayDate.getMonth() - lastRunDate.getMonth() + yearDiff * 12;
+        due = monthDiff >= 1;
+      }
+    }
+
+    if (!due) return;
+
+    const dateLabel = now.toISOString().split('T')[0];
+    const originalDb = this.currentDbName || "tsl_expenses.db";
+
+    const allDbs: { name: string; dbName: string }[] = [
+      { name: "Default", dbName: "tsl_expenses.db" }
+    ];
+
+    try {
+      const recent = await this.getRecentDatabases();
+      for (const r of recent) {
+        if (!allDbs.find(x => x.dbName === r.dbName)) {
+          allDbs.push({ name: r.name || r.dbName, dbName: r.dbName });
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load recent DBs for auto backup", e);
+    }
+
+    for (const entry of allDbs) {
+      try {
+        if (entry.dbName !== this.currentDbName) {
+          await this.switchDatabase(entry.dbName);
+        }
+        const dbLabel = entry.name || entry.dbName;
+        const name = `${dbLabel} | Auto ${frequency} ${dateLabel}`;
+        await this.createJsonBackup(name);
+      } catch (e) {
+        console.error("Auto backup failed for", entry.dbName, e);
+      }
+    }
+
+    if (originalDb !== this.currentDbName) {
+      try {
+        await this.switchDatabase(originalDb);
+      } catch (e) {
+        console.error("Failed to restore original DB after auto backup", e);
+      }
+    }
+
+    await this.setSettings({ backup_last_run: now.toISOString() });
+  },
+
+  async runManualBackupNow() {
+    if (Platform.OS === 'web') return { created: 0, failed: 0 };
+
+    const now = new Date();
+    const dateLabel = now.toISOString().split('T')[0];
+    const originalDb = this.currentDbName || "tsl_expenses.db";
+
+    const allDbs: { name: string; dbName: string }[] = [
+      { name: "Default", dbName: "tsl_expenses.db" }
+    ];
+
+    try {
+      const recent = await this.getRecentDatabases();
+      for (const r of recent) {
+        if (!allDbs.find(x => x.dbName === r.dbName)) {
+          allDbs.push({ name: r.name || r.dbName, dbName: r.dbName });
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load recent DBs for manual backup", e);
+    }
+
+    let created = 0;
+    let failed = 0;
+
+    for (const entry of allDbs) {
+      try {
+        if (entry.dbName !== this.currentDbName) {
+          await this.switchDatabase(entry.dbName);
+        }
+        const dbLabel = entry.name || entry.dbName;
+        const name = `${dbLabel} | Manual ${dateLabel}`;
+        await this.createJsonBackup(name);
+        created++;
+      } catch (e) {
+        console.error("Manual backup failed for", entry.dbName, e);
+        failed++;
+      }
+    }
+
+    if (originalDb !== this.currentDbName) {
+      try {
+        await this.switchDatabase(originalDb);
+      } catch (e) {
+        console.error("Failed to restore original DB after manual backup", e);
+      }
+    }
+
+    return { created, failed };
+  },
+
   async addRecentDatabase(name: string, dbName: string) {
     if (Platform.OS === 'web') return;
     try {
@@ -352,6 +540,7 @@ export const Store = {
             } catch (e) { console.log("Error closing old DB", e); }
         }
         db = await SQLite.openDatabaseAsync(dbName);
+        this.currentDbName = dbName;
         await this.initDB();
         this.notify();
     } catch (e) {

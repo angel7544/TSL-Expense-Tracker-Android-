@@ -7,8 +7,7 @@ buildscript {
         compileSdkVersion = Integer.parseInt(findProperty('android.compileSdkVersion') ?: '34')
         targetSdkVersion = Integer.parseInt(findProperty('android.targetSdkVersion') ?: '34')
         kotlinVersion = findProperty('android.kotlinVersion') ?: '1.9.23'
-
-        ndkVersion = "27.0.12077973"
+        ndkVersion = "27.1.12297006"
     }
     repositories {
         google()
@@ -22,6 +21,14 @@ buildscript {
 }
 
 apply plugin: "com.facebook.react.rootproject"
+
+subprojects { subproject ->
+    subproject.plugins.withId("com.android.library") {
+        subproject.android {
+            ndkVersion rootProject.ext.ndkVersion
+        }
+    }
+}
 
 allprojects {
     repositories {
@@ -37,14 +44,5 @@ allprojects {
         google()
         mavenCentral()
         maven { url 'https://www.jitpack.io' }
-    }
-}
-
-subprojects { project ->
-    project.pluginManager.withPlugin('com.android.library') {
-        project.android.ndkVersion = rootProject.ext.ndkVersion
-    }
-    project.pluginManager.withPlugin('com.android.application') {
-        project.android.ndkVersion = rootProject.ext.ndkVersion
     }
 }

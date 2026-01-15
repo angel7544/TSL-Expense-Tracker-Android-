@@ -44,7 +44,7 @@ if (getRNMinorVersion() >= 75) {
   }
 }
 
-rootProject.name = 'TSLBudgetManager'
+rootProject.name = 'BR-31 Expense Suite'
 
 dependencyResolutionManagement {
   versionCatalogs {

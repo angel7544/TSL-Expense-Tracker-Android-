@@ -25,12 +25,14 @@ export default function SettingsScreen({ navigation }: any) {
   const [pinModalVisible, setPinModalVisible] = useState(false);
   const [pinMode, setPinMode] = useState<'enable' | 'change'>('enable');
   const [biometricsAvailable, setBiometricsAvailable] = useState(false);
+  const [availableDbs, setAvailableDbs] = useState<any[]>([]);
 
   useEffect(() => {
       const unsub = Store.subscribe(() => {
           setIsAuthenticated(Store.isAuthenticated);
       });
       checkBiometrics();
+      Store.getRecentDatabases().then(setAvailableDbs);
       return unsub;
   }, []);
 
@@ -141,8 +143,6 @@ export default function SettingsScreen({ navigation }: any) {
     navigation.navigate("Backup");
   };
 
-
-
   const toggleLock = (value: boolean) => {
     if (value) {
       setPinMode('enable');
@@ -158,6 +158,44 @@ export default function SettingsScreen({ navigation }: any) {
       const newSettings = { ...settings, biometrics_enabled: value };
       setSettings(newSettings);
       Store.setSettings(newSettings);
+  };
+
+  const toggleAutoBackup = (value: boolean) => {
+      const newSettings = { ...settings, backup_enabled: value };
+      setSettings(newSettings);
+      Store.setSettings(newSettings);
+  };
+
+  const changeBackupFrequency = (value: 'daily' | 'weekly' | 'monthly') => {
+      const newSettings = { ...settings, backup_frequency: value };
+      setSettings(newSettings);
+      Store.setSettings(newSettings);
+  };
+
+  const changeBackupTime = (value: string) => {
+      const newSettings = { ...settings, backup_time: value };
+      setSettings(newSettings);
+      Store.setSettings(newSettings);
+  };
+
+  const manualBackupNow = async () => {
+      try {
+          const result = await Store.runManualBackupNow();
+          if (result && typeof result.created === "number") {
+              if (result.created > 0) {
+                  const message = result.failed && result.failed > 0
+                      ? `Created ${result.created} backup(s).\nFailed: ${result.failed}.`
+                      : `Created ${result.created} backup(s).`;
+                  Alert.alert("Backup Complete", message);
+              } else {
+                  Alert.alert("Backup", "No backups were created.");
+              }
+          } else {
+              Alert.alert("Backup Complete", "Backup finished.");
+          }
+      } catch (e: any) {
+          Alert.alert("Error", e.message || "Failed to create backup");
+      }
   };
 
   const changePin = () => {
@@ -185,7 +223,7 @@ export default function SettingsScreen({ navigation }: any) {
 
   return (
     <View style={{ flex: 1, backgroundColor: "#F3F4F6" }}>
-      <AppHeader title="Settings" subtitle="App Preferences" onLogout={logout} />
+      <AppHeader title="Settings" subtitle="App Preferences" />
       <ScrollView 
         style={{ flex: 1, padding: 20 }}
         showsVerticalScrollIndicator={false}
@@ -425,8 +463,133 @@ export default function SettingsScreen({ navigation }: any) {
           </View>
       </View>
 
+      <Text style={styles.sectionTitle}>DATABASE</Text>
+      <View style={styles.modernCard}>
+          <View style={styles.fieldRow}>
+              <View style={styles.fieldIcon}>
+                  <Ionicons name="server-outline" size={20} color="#4F46E5" />
+              </View>
+              <View style={{ flex: 1 }}>
+                  <Text style={styles.fieldLabel}>Primary Database</Text>
+                  <Text style={styles.actionSubtitle}>Database to load on startup</Text>
+                  
+                  <View style={{marginTop: 12}}>
+                      <TouchableOpacity 
+                          style={[styles.dbOption, (!settings.primary_db || settings.primary_db === 'tsl_expenses.db') && styles.dbOptionActive]}
+                          onPress={() => {
+                              const newSettings = { ...settings, primary_db: 'tsl_expenses.db' };
+                              setSettings(newSettings);
+                              Store.setSettings(newSettings);
+                          }}
+                      >
+                          <Text style={[styles.dbOptionText, (!settings.primary_db || settings.primary_db === 'tsl_expenses.db') && styles.dbOptionTextActive]}>Default (tsl_expenses.db)</Text>
+                          {(!settings.primary_db || settings.primary_db === 'tsl_expenses.db') && <Ionicons name="checkmark-circle" size={18} color="#4F46E5" />}
+                      </TouchableOpacity>
+                      
+                      {availableDbs.filter(d => d.dbName !== 'tsl_expenses.db').map(db => (
+                          <TouchableOpacity 
+                              key={db.dbName}
+                              style={[styles.dbOption, settings.primary_db === db.dbName && styles.dbOptionActive]}
+                              onPress={() => {
+                                  const newSettings = { ...settings, primary_db: db.dbName };
+                                  setSettings(newSettings);
+                                  Store.setSettings(newSettings);
+                              }}
+                          >
+                              <Text style={[styles.dbOptionText, settings.primary_db === db.dbName && styles.dbOptionTextActive]} numberOfLines={1}>
+                                {db.name} ({db.dbName})
+                              </Text>
+                              {settings.primary_db === db.dbName && <Ionicons name="checkmark-circle" size={18} color="#4F46E5" />}
+                          </TouchableOpacity>
+                      ))}
+                  </View>
+              </View>
+          </View>
+      </View>
+
       <Text style={styles.sectionTitle}>DATA MANAGEMENT</Text>
       <View style={styles.modernCard}>
+          <View style={styles.fieldRow}>
+              <View style={styles.fieldIcon}>
+                  <Ionicons name="refresh-outline" size={20} color="#4F46E5" />
+              </View>
+              <View style={{ flex: 1 }}>
+                  <Text style={styles.fieldLabel}>Automatic Backups</Text>
+                  <Text style={styles.actionSubtitle}>Backup current database on a schedule</Text>
+              </View>
+              <Switch 
+                  value={!!settings.backup_enabled}
+                  onValueChange={toggleAutoBackup}
+                  trackColor={{ false: "#D1D5DB", true: "#4F46E5" }}
+                  thumbColor={"#fff"}
+              />
+          </View>
+
+          {settings.backup_enabled && (
+              <>
+                  <View style={styles.separator} />
+                  <View style={styles.fieldRow}>
+                      <View style={styles.fieldIcon}>
+                          <Ionicons name="calendar-outline" size={20} color="#4F46E5" />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                          <Text style={styles.fieldLabel}>Backup Frequency</Text>
+                          <View style={{ flexDirection: "row", marginTop: 8 }}>
+                              {(['daily', 'weekly', 'monthly'] as const).map(option => (
+                                  <TouchableOpacity
+                                      key={option}
+                                      onPress={() => changeBackupFrequency(option)}
+                                      style={[
+                                          styles.sizeOption,
+                                          (settings.backup_frequency || 'monthly') === option && styles.sizeOptionActive
+                                      ]}
+                                  >
+                                      <Text
+                                          style={[
+                                              styles.sizeOptionText,
+                                              (settings.backup_frequency || 'monthly') === option && styles.sizeOptionTextActive
+                                          ]}
+                                      >
+                                          {option === 'daily' ? 'Daily' : option === 'weekly' ? 'Weekly' : 'Monthly'}
+                                      </Text>
+                                  </TouchableOpacity>
+                              ))}
+                          </View>
+                      </View>
+                  </View>
+
+                  <View style={styles.separator} />
+                  <View style={styles.fieldRow}>
+                      <View style={styles.fieldIcon}>
+                          <Ionicons name="time-outline" size={20} color="#4F46E5" />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                          <Text style={styles.fieldLabel}>Backup Time</Text>
+                          <TextInput
+                              style={styles.cleanInput}
+                              value={settings.backup_time || "00:00"}
+                              onChangeText={changeBackupTime}
+                              placeholder="HH:mm"
+                              keyboardType="numbers-and-punctuation"
+                          />
+                      </View>
+                  </View>
+              </>
+          )}
+
+          <View style={styles.separator} />
+
+          <TouchableOpacity onPress={manualBackupNow} style={styles.actionItem}>
+            <View style={[styles.actionIconBox, { backgroundColor: "#E0F2FE" }]}>
+                <Ionicons name="cloud-upload-outline" size={22} color="#0284C7" />
+            </View>
+            <View style={{ flex: 1, marginLeft: 15 }}>
+                <Text style={styles.actionTitle}>Run Backup Now</Text>
+                <Text style={styles.actionSubtitle}>Create JSON backups immediately</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
+          </TouchableOpacity>
+
           <TouchableOpacity onPress={importSpreadsheet} style={styles.actionItem}>
             <View style={[styles.actionIconBox, { backgroundColor: "#ECFDF5" }]}>
                 <Ionicons name="cloud-upload-outline" size={22} color="#10B981" />
@@ -588,5 +751,16 @@ const styles = StyleSheet.create({
     actionItem: { flexDirection: "row", alignItems: "center", paddingVertical: 8 },
     actionIconBox: { width: 44, height: 44, borderRadius: 12, justifyContent: "center", alignItems: "center" },
     actionTitle: { fontSize: 16, fontWeight: "600", color: "#1F2937" },
-    actionSubtitle: { fontSize: 12, color: "#9CA3AF", marginTop: 1 }
+    actionSubtitle: { fontSize: 12, color: "#9CA3AF", marginTop: 1 },
+
+    dbOption: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        paddingVertical: 10, paddingHorizontal: 12, borderRadius: 8,
+        backgroundColor: '#F9FAFB', marginBottom: 8, borderWidth: 1, borderColor: 'transparent'
+    },
+    dbOptionActive: {
+        backgroundColor: '#EEF2FF', borderColor: '#4F46E5'
+    },
+    dbOptionText: { fontSize: 14, color: '#4B5563', fontWeight: '500', flex: 1 },
+    dbOptionTextActive: { color: '#4F46E5', fontWeight: '700' },
 });

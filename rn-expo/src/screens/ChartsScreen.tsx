@@ -244,8 +244,14 @@ export default function ChartsScreen() {
                 color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
                 labelColor: (opacity = 1) => `rgba(100, 100, 100, ${opacity})`,
                 barPercentage: 0.7,
-                fillShadowGradient: '#2ecc71',
+                fillShadowGradient: '#e74c3c',
                 fillShadowGradientOpacity: 1,
+                propsForBackgroundLines: {
+                    strokeDasharray: "",
+                },
+                propsForLabels: {
+                    fontSize: 12,
+                }
                 }}
                 withInnerLines={true}
                 showValuesOnTopOfBars

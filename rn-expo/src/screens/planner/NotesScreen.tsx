@@ -61,17 +61,12 @@ export const NotesScreen = () => {
             const file = result.assets?.[0];
             if (!file?.uri) return;
 
-            const notesDir = FileSystem.documentDirectory + "notes/";
-            try {
-                await FileSystem.makeDirectoryAsync(notesDir, { intermediates: true });
-            } catch (e) {}
-
-            const fileName = file.name || `note_${Date.now()}.jpg`;
-            const destUri = notesDir + fileName;
-
-            await FileSystem.copyAsync({ from: file.uri, to: destUri });
+            const base64 = await FileSystem.readAsStringAsync(file.uri, { encoding: FileSystem.EncodingType.Base64 });
+            const ext = (file.name || "").split(".").pop()?.toLowerCase();
+            const mime = ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : "image/jpeg";
+            const dataUri = `data:${mime};base64,${base64}`;
             
-            setCurrentNote(prev => ({ ...prev, image_uri: destUri }));
+            setCurrentNote(prev => ({ ...prev, image_uri: dataUri }));
         } catch (e) {
             console.log(e);
             Alert.alert("Error", "Failed to pick image");

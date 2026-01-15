@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "TSLExpense",
-    "slug": "android-tsl-expense",
-    "version": "0.1.0",
+    "name": "BR-31 Expense Suite",
+    "slug": "br-31-expense-suite",
+    "version": "3.1.0",
     "orientation": "default",
     "icon": "./assets/tsl_icon.png",
     "splash": {

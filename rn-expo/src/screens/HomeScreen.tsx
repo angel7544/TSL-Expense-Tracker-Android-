@@ -20,6 +20,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const [topCategories, setTopCategories] = useState<{category: string, amount: number}[]>([]);
   const [recentRecords, setRecentRecords] = useState<ExpenseRecord[]>([]);
   const [recentFiles, setRecentFiles] = useState<{name: string, uri: string, dbName: string}[]>([]);
+  const [currentDbName, setCurrentDbName] = useState("tsl_expenses.db");
 
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -67,6 +68,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     // Load recent files
     const recent = await Store.getRecentDatabases();
     setRecentFiles(recent);
+    setCurrentDbName(Store.currentDbName);
   };
 
   const onRefresh = React.useCallback(async () => {
@@ -107,10 +109,13 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   };
 
   const monthName = currentDate.toLocaleString('default', { month: 'long' });
+  
+  const currentFile = recentFiles.find(f => f.dbName === currentDbName);
+  const displaySubtitle = currentDbName === 'tsl_expenses.db' ? 'Default Database' : (currentFile?.name || currentDbName);
 
   return (
     <View style={{ flex: 1, backgroundColor: "#f8f9fa" }}>
-      <AppHeader title="Dashboard" subtitle="Overview" showCreateDB={true} />
+      <AppHeader title="Dashboard" subtitle={displaySubtitle} showCreateDB={true} />
       
       <ScrollView 
         style={{ flex: 1 }} 

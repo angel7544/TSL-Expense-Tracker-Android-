@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Alert, StyleSheet, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Alert, StyleSheet, Platform, ActivityIndicator, Modal, ScrollView } from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,16 +17,27 @@ interface BackupLog {
     date: string;
     recordCount: number;
     uri: string;
+    dbName?: string;
 }
 
 export default function BackupScreen() {
     const [backups, setBackups] = useState<BackupLog[]>([]);
     const [loading, setLoading] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
+    const [availableDbs, setAvailableDbs] = useState<any[]>([]);
+    const [restoreModalVisible, setRestoreModalVisible] = useState(false);
+    const [selectedBackup, setSelectedBackup] = useState<BackupLog | null>(null);
+    const [targetDb, setTargetDb] = useState("");
+    const [mergeMode, setMergeMode] = useState<'skip' | 'keep'>('skip');
+    const isFocused = useIsFocused();
 
     useEffect(() => {
-        loadBackups();
-    }, []);
+        if (isFocused) {
+            loadBackups();
+            Store.getRecentDatabases().then(setAvailableDbs);
+            setTargetDb(Store.currentDbName);
+        }
+    }, [isFocused]);
 
     const loadBackups = async () => {
         if (Platform.OS === 'web') return;
@@ -57,32 +69,11 @@ export default function BackupScreen() {
     const createBackup = async (name: string) => {
         setLoading(true);
         try {
-            const records = await Store.list({});
-            const json = JSON.stringify(records, null, 2);
-            // Sanitize filename
-            const safeName = name.replace(/[^a-z0-9]/gi, '_');
-            const filename = `backup_${safeName}_${Date.now()}.json`;
-            const uri = FileSystem.documentDirectory + filename;
-            
-            await FileSystem.writeAsStringAsync(uri, json);
-
-            const newLog: BackupLog = {
-                id: Date.now().toString(),
-                name: name,
-                filename: filename,
-                date: new Date().toISOString(),
-                recordCount: records.length,
-                uri: uri
-            };
-
-            const updated = [newLog, ...backups];
-            setBackups(updated);
-            await FileSystem.writeAsStringAsync(BACKUP_LOG_FILE, JSON.stringify(updated));
-            
+            await Store.createJsonBackup(name);
+            await loadBackups();
             Alert.alert("Success", "Backup created successfully");
-
         } catch (e: any) {
-            Alert.alert("Error", e.message);
+            Alert.alert("Error", e.message || "Failed to create backup");
         } finally {
             setLoading(false);
         }
@@ -112,57 +103,77 @@ export default function BackupScreen() {
     };
 
     const restoreBackup = (backup: BackupLog) => {
-        const doRestore = async (checkDuplicates: boolean) => {
-            try {
-                const content = await FileSystem.readAsStringAsync(backup.uri);
-                const records = JSON.parse(content);
-                const count = await Store.importCSV(records, `Restore_${backup.name}`, checkDuplicates);
-                Alert.alert("Success", `Restored ${count} records`);
-            } catch (e: any) {
-                Alert.alert("Error", "Failed to restore: " + e.message);
-            }
-        };
-
-        Alert.alert("Restore Backup", `Restore records from ${backup.name}?`, [
-            { text: "Merge (Skip Duplicates)", onPress: () => doRestore(true) },
-            { text: "Merge (Keep All)", onPress: () => doRestore(false) },
-            { text: "Cancel", style: "cancel" }
-        ]);
+        setSelectedBackup(backup);
+        setTargetDb(backup.dbName || Store.currentDbName);
+        setRestoreModalVisible(true);
     };
 
-    const renderItem = ({ item }: { item: BackupLog }) => (
-        <View style={styles.card}>
-            <View style={styles.cardHeader}>
-                <View style={styles.iconBg}>
-                    <Ionicons name="save-outline" size={24} color="#4F46E5" />
+    const performRestore = async () => {
+        if (!selectedBackup) return;
+        setLoading(true);
+        setRestoreModalVisible(false);
+        
+        const originalDb = Store.currentDbName;
+        const needsSwitch = targetDb && targetDb !== originalDb;
+
+        try {
+            if (needsSwitch) {
+                await Store.switchDatabase(targetDb);
+            }
+
+            const content = await FileSystem.readAsStringAsync(selectedBackup.uri);
+            const records = JSON.parse(content);
+            const count = await Store.importCSV(records, `Restore_${selectedBackup.name}`, mergeMode === 'skip');
+            
+            Alert.alert("Success", `Restored ${count} records to ${targetDb || originalDb}`);
+        } catch (e: any) {
+            Alert.alert("Error", "Failed to restore: " + e.message);
+        } finally {
+            if (needsSwitch) {
+                await Store.switchDatabase(originalDb);
+            }
+            setLoading(false);
+            setSelectedBackup(null);
+        }
+    };
+
+    const renderItem = ({ item }: { item: BackupLog }) => {
+        const dbLabel = item.dbName || 'tsl_expenses.db';
+        const subtitle = `${new Date(item.date).toLocaleString()} • ${dbLabel}`;
+        return (
+            <View style={styles.card}>
+                <View style={styles.cardHeader}>
+                    <View style={styles.iconBg}>
+                        <Ionicons name="save-outline" size={24} color="#4F46E5" />
+                    </View>
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                        <Text style={styles.cardTitle}>{item.name}</Text>
+                        <Text style={styles.cardSubtitle}>{subtitle}</Text>
+                    </View>
+                    <View style={styles.badge}>
+                        <Text style={styles.badgeText}>{item.recordCount} Records</Text>
+                    </View>
                 </View>
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                    <Text style={styles.cardTitle}>{item.name}</Text>
-                    <Text style={styles.cardSubtitle}>{new Date(item.date).toLocaleString()}</Text>
-                </View>
-                <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{item.recordCount} Records</Text>
+                
+                <View style={styles.divider} />
+                
+                <View style={styles.actions}>
+                    <TouchableOpacity style={styles.actionBtn} onPress={() => restoreBackup(item)}>
+                        <Ionicons name="cloud-upload-outline" size={18} color="#059669" />
+                        <Text style={[styles.actionText, { color: '#059669' }]}>Restore</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.actionBtn} onPress={() => shareBackup(item)}>
+                        <Ionicons name="share-social-outline" size={18} color="#4F46E5" />
+                        <Text style={[styles.actionText, { color: '#4F46E5' }]}>Export</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.actionBtn} onPress={() => deleteBackup(item.id)}>
+                        <Ionicons name="trash-outline" size={18} color="#DC2626" />
+                        <Text style={[styles.actionText, { color: '#DC2626' }]}>Delete</Text>
+                    </TouchableOpacity>
                 </View>
             </View>
-            
-            <View style={styles.divider} />
-            
-            <View style={styles.actions}>
-                <TouchableOpacity style={styles.actionBtn} onPress={() => restoreBackup(item)}>
-                    <Ionicons name="cloud-upload-outline" size={18} color="#059669" />
-                    <Text style={[styles.actionText, { color: '#059669' }]}>Restore</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.actionBtn} onPress={() => shareBackup(item)}>
-                    <Ionicons name="share-social-outline" size={18} color="#4F46E5" />
-                    <Text style={[styles.actionText, { color: '#4F46E5' }]}>Export</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.actionBtn} onPress={() => deleteBackup(item.id)}>
-                    <Ionicons name="trash-outline" size={18} color="#DC2626" />
-                    <Text style={[styles.actionText, { color: '#DC2626' }]}>Delete</Text>
-                </TouchableOpacity>
-            </View>
-        </View>
-    );
+        );
+    };
 
     return (
         <View style={styles.container}>
@@ -201,6 +212,68 @@ export default function BackupScreen() {
                 onSubmit={handleCreateBackup}
                 submitLabel="Create"
             />
+
+            <Modal
+                visible={restoreModalVisible}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setRestoreModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Restore Backup</Text>
+                        <Text style={styles.modalSubtitle}>Select target database and merge strategy</Text>
+
+                        <View style={{maxHeight: 250, marginVertical: 10}}>
+                            <Text style={styles.label}>Target Database</Text>
+                            <ScrollView nestedScrollEnabled style={styles.scrollList}>
+                                <TouchableOpacity 
+                                    style={[styles.option, targetDb === 'tsl_expenses.db' && styles.optionSelected]}
+                                    onPress={() => setTargetDb('tsl_expenses.db')}
+                                >
+                                    <Text style={[styles.optionText, targetDb === 'tsl_expenses.db' && styles.optionTextSelected]}>Default (tsl_expenses.db)</Text>
+                                    {targetDb === 'tsl_expenses.db' && <Ionicons name="checkmark" size={16} color="#4F46E5" />}
+                                </TouchableOpacity>
+                                {availableDbs.filter(d => d.dbName !== 'tsl_expenses.db').map(db => (
+                                    <TouchableOpacity 
+                                        key={db.dbName}
+                                        style={[styles.option, targetDb === db.dbName && styles.optionSelected]}
+                                        onPress={() => setTargetDb(db.dbName)}
+                                    >
+                                        <Text style={[styles.optionText, targetDb === db.dbName && styles.optionTextSelected]}>{db.name} ({db.dbName})</Text>
+                                        {targetDb === db.dbName && <Ionicons name="checkmark" size={16} color="#4F46E5" />}
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        </View>
+
+                        <Text style={styles.label}>Merge Strategy</Text>
+                        <View style={styles.row}>
+                            <TouchableOpacity 
+                                style={[styles.chip, mergeMode === 'skip' && styles.chipSelected]}
+                                onPress={() => setMergeMode('skip')}
+                            >
+                                <Text style={[styles.chipText, mergeMode === 'skip' && styles.chipTextSelected]}>Skip Duplicates</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                                style={[styles.chip, mergeMode === 'keep' && styles.chipSelected]}
+                                onPress={() => setMergeMode('keep')}
+                            >
+                                <Text style={[styles.chipText, mergeMode === 'keep' && styles.chipTextSelected]}>Keep All</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.modalActions}>
+                            <TouchableOpacity style={styles.cancelBtn} onPress={() => setRestoreModalVisible(false)}>
+                                <Text style={styles.cancelBtnText}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.submitBtn} onPress={performRestore}>
+                                <Text style={styles.submitBtnText}>Restore</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -305,5 +378,39 @@ const styles = StyleSheet.create({
     emptyText: {
         color: '#9CA3AF',
         marginTop: 10,
-    }
+    },
+    modalOverlay: {
+        flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20
+    },
+    modalContent: {
+        backgroundColor: 'white', borderRadius: 20, padding: 20,
+        shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 5
+    },
+    modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#1F2937', marginBottom: 4, textAlign: 'center' },
+    modalSubtitle: { fontSize: 14, color: '#6B7280', textAlign: 'center', marginBottom: 20 },
+    label: { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 8, marginTop: 4 },
+    scrollList: { maxHeight: 150, marginBottom: 16, borderWidth: 1, borderColor: '#F3F4F6', borderRadius: 8 },
+    option: {
+        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+        padding: 12, borderBottomWidth: 1, borderBottomColor: '#F3F4F6', backgroundColor: '#fff'
+    },
+    optionSelected: { backgroundColor: '#EEF2FF' },
+    optionText: { fontSize: 14, color: '#4B5563' },
+    optionTextSelected: { color: '#4F46E5', fontWeight: '600' },
+    row: { flexDirection: 'row', marginBottom: 20 },
+    chip: {
+        flex: 1, padding: 10, borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8,
+        alignItems: 'center', marginHorizontal: 4, backgroundColor: '#F9FAFB'
+    },
+    chipSelected: { backgroundColor: '#EEF2FF', borderColor: '#4F46E5' },
+    chipText: { fontSize: 13, color: '#6B7280', fontWeight: '500' },
+    chipTextSelected: { color: '#4F46E5', fontWeight: '600' },
+    modalActions: { flexDirection: 'row', marginTop: 10 },
+    cancelBtn: { flex: 1, padding: 14, alignItems: 'center', marginRight: 8 },
+    cancelBtnText: { color: '#6B7280', fontWeight: '600' },
+    submitBtn: {
+        flex: 1, padding: 14, alignItems: 'center', backgroundColor: '#4F46E5',
+        borderRadius: 12, marginLeft: 8
+    },
+    submitBtnText: { color: 'white', fontWeight: '600' },
 });
