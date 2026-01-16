@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useContext, useMemo } from "react";
 import { 
   View, Text, ScrollView, TouchableOpacity, 
   FlatList, useWindowDimensions, Animated, Platform, Alert, StyleSheet, Image, RefreshControl
@@ -8,9 +8,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { Store, ExpenseRecord } from "../data/Store";
 import { useFocusEffect } from '@react-navigation/native';
 import { AppHeader } from "../components/AppHeader";
+import { UIContext } from "../context/UIContext";
+import { getTheme } from "../constants/Theme";
 
 export default function HomeScreen({ navigation }: { navigation: any }) {
   const { width } = useWindowDimensions();
+  const { theme } = useContext(UIContext);
+  const styles = useMemo(() => getStyles(theme), [theme]);
+
   const [activeTab, setActiveTab] = useState<'Expense' | 'Income'>('Expense');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isAllTime, setIsAllTime] = useState(false);
@@ -114,7 +119,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const displaySubtitle = currentDbName === 'tsl_expenses.db' ? 'Default Database' : (currentFile?.name || currentDbName);
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#f8f9fa" }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <AppHeader title="Dashboard" subtitle={displaySubtitle} showCreateDB={true} />
       
       <ScrollView 
@@ -123,7 +128,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         showsVerticalScrollIndicator={false}
         showsHorizontalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />
         }
       >
         {/* Date Filter Controls */}
@@ -146,11 +151,11 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         {!isAllTime && (
             <View style={styles.monthSelector}>
                 <TouchableOpacity onPress={() => changeMonth(-1)} style={styles.arrowBtn}>
-                    <Ionicons name="chevron-back" size={24} color="#333" />
+                    <Ionicons name="chevron-back" size={24} color={theme.colors.text} />
                 </TouchableOpacity>
                 <Text style={styles.monthText}>{monthName} {currentDate.getFullYear()}</Text>
                 <TouchableOpacity onPress={() => changeMonth(1)} style={styles.arrowBtn}>
-                    <Ionicons name="chevron-forward" size={24} color="#333" />
+                    <Ionicons name="chevron-forward" size={24} color={theme.colors.text} />
                 </TouchableOpacity>
             </View>
         )}
@@ -179,7 +184,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             </Text>
             
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
-                <Text style={{ fontSize: 14, color: '#666' }}>Total Records: <Text style={{ fontWeight: 'bold', color: '#333' }}>{summary.count}</Text></Text>
+                <Text style={{ fontSize: 14, color: theme.colors.subtext }}>Total Records: <Text style={{ fontWeight: 'bold', color: theme.colors.text }}>{summary.count}</Text></Text>
             </View>
 
             <View style={styles.progressSection}>
@@ -210,11 +215,11 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }} style={{ marginBottom: 24 }}>
             {topCategories.length === 0 ? (
-                <Text style={{ color: '#999', padding: 16 }}>No data for this month</Text>
+                <Text style={{ color: theme.colors.subtext, padding: 16 }}>No data for this month</Text>
             ) : topCategories.map((item, index) => (
                 <View key={index} style={styles.categoryItem}>
                     <View style={styles.categoryIconBg}>
-                        <Ionicons name={getCategoryIcon(item.category)} size={24} color="#7F56D9" />
+                        <Ionicons name={getCategoryIcon(item.category)} size={24} color={theme.colors.primary} />
                     </View>
                     <Text style={styles.categoryName} numberOfLines={1}>{item.category}</Text>
                 </View>
@@ -245,7 +250,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                 </View>
             ))}
             {recentRecords.length === 0 && (
-                 <Text style={{ color: '#999', textAlign: 'center', padding: 20 }}>No transactions found</Text>
+                 <Text style={{ color: theme.colors.subtext, textAlign: 'center', padding: 20 }}>No transactions found</Text>
             )}
         </View>
 
@@ -256,11 +261,11 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                 {recentFiles.map((f, i) => (
                     <View key={i} style={styles.fileRow}>
                         <TouchableOpacity onPress={() => switchDatabase(f)} style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                            <Ionicons name="server-outline" size={20} color="#666" />
-                            <Text style={{ marginLeft: 8, color: "#333" }}>{f.name}</Text>
+                            <Ionicons name="server-outline" size={20} color={theme.colors.subtext} />
+                            <Text style={{ marginLeft: 8, color: theme.colors.text }}>{f.name}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity onPress={() => removeDatabase(f.dbName)} style={{ padding: 4 }}>
-                            <Ionicons name="trash-outline" size={18} color="#dc3545" />
+                            <Ionicons name="trash-outline" size={18} color={theme.colors.danger} />
                         </TouchableOpacity>
                     </View>
                 ))}
@@ -289,15 +294,15 @@ const getCategoryIcon = (cat: string): keyof typeof Ionicons.glyphMap => {
     return map[key || ''] || 'pricetag';
 };
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
     toggleContainer: {
         flexDirection: 'row',
-        backgroundColor: '#fff',
+        backgroundColor: theme.colors.card,
         margin: 16,
         borderRadius: 12,
         padding: 4,
         borderWidth: 1,
-        borderColor: '#eee'
+        borderColor: theme.colors.border
     },
     toggleButton: {
         flex: 1,
@@ -306,11 +311,11 @@ const styles = StyleSheet.create({
         borderRadius: 8
     },
     toggleActive: {
-        backgroundColor: '#4e6aff',
+        backgroundColor: theme.colors.primary,
     },
     toggleText: {
         fontSize: 16,
-        color: '#666',
+        color: theme.colors.subtext,
         fontWeight: '500'
     },
     toggleTextActive: {
@@ -318,7 +323,7 @@ const styles = StyleSheet.create({
         fontWeight: '600'
     },
     card: {
-        backgroundColor: '#fff',
+        backgroundColor: theme.colors.card,
         marginHorizontal: 16,
         borderRadius: 20,
         padding: 24,
@@ -330,7 +335,7 @@ const styles = StyleSheet.create({
     },
     cardTitle: {
         fontSize: 14,
-        color: '#888',
+        color: theme.colors.subtext,
         marginBottom: 8
     },
     monthSelector: {
@@ -342,7 +347,7 @@ const styles = StyleSheet.create({
     monthText: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#333',
+        color: theme.colors.text,
         marginHorizontal: 16
     },
     arrowBtn: {
@@ -351,7 +356,7 @@ const styles = StyleSheet.create({
     cardAmount: {
         fontSize: 32,
         fontWeight: 'bold',
-        color: '#000',
+        color: theme.colors.text,
         marginBottom: 24
     },
     progressSection: {
@@ -364,17 +369,17 @@ const styles = StyleSheet.create({
     },
     progressLabel: {
         fontSize: 14,
-        color: '#555',
+        color: theme.colors.subtext,
         fontWeight: '500'
     },
     progressValue: {
         fontSize: 14,
-        color: '#333',
+        color: theme.colors.text,
         fontWeight: '600'
     },
     progressBarBg: {
         height: 8,
-        backgroundColor: '#f0f0f0',
+        backgroundColor: theme.mode === 'dark' ? theme.colors.border : '#f0f0f0',
         borderRadius: 4,
         overflow: 'hidden'
     },
@@ -389,7 +394,7 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#1a1a1a'
+        color: theme.colors.text
     },
     categoryItem: {
         alignItems: 'center',
@@ -399,7 +404,7 @@ const styles = StyleSheet.create({
     categoryIconBg: {
         width: 60,
         height: 60,
-        backgroundColor: '#F4EBFF',
+        backgroundColor: theme.mode === 'dark' ? theme.colors.border : '#F4EBFF',
         borderRadius: 20,
         justifyContent: 'center',
         alignItems: 'center',
@@ -407,24 +412,24 @@ const styles = StyleSheet.create({
     },
     categoryName: {
         fontSize: 12,
-        color: '#333',
+        color: theme.colors.text,
         fontWeight: '500',
         textAlign: 'center'
     },
     transactionRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#fff',
+        backgroundColor: theme.colors.card,
         padding: 16,
         borderRadius: 16,
         marginBottom: 12,
         borderWidth: 1,
-        borderColor: '#f0f0f0'
+        borderColor: theme.colors.border
     },
     transactionIcon: {
         width: 48,
         height: 48,
-        backgroundColor: '#FFF0F3',
+        backgroundColor: theme.mode === 'dark' ? theme.colors.border : '#FFF0F3',
         borderRadius: 12,
         justifyContent: 'center',
         alignItems: 'center'
@@ -432,12 +437,12 @@ const styles = StyleSheet.create({
     transactionTitle: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#333',
+        color: theme.colors.text,
         marginBottom: 4
     },
     transactionSubtitle: {
         fontSize: 12,
-        color: '#888'
+        color: theme.colors.subtext
     },
     transactionAmount: {
         fontSize: 16,
@@ -446,7 +451,7 @@ const styles = StyleSheet.create({
     },
     transactionDate: {
         fontSize: 12,
-        color: '#999',
+        color: theme.colors.subtext,
         textAlign: 'right',
         marginTop: 4
     },
@@ -454,27 +459,27 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         padding: 12,
-        backgroundColor: '#fff',
+        backgroundColor: theme.colors.card,
         borderRadius: 8,
         marginBottom: 8,
         borderWidth: 1,
-        borderColor: '#eee',
+        borderColor: theme.colors.border,
     },
     filterBtn: {
         paddingVertical: 8,
         paddingHorizontal: 16,
         borderRadius: 20,
-        backgroundColor: '#eee'
+        backgroundColor: theme.mode === 'dark' ? theme.colors.border : '#eee'
     },
     filterBtnActive: {
-        backgroundColor: '#333'
+        backgroundColor: theme.colors.text
     },
     filterText: {
         fontSize: 14,
-        color: '#666',
+        color: theme.colors.subtext,
         fontWeight: '500'
     },
     filterTextActive: {
-        color: '#fff'
+        color: theme.colors.background
     }
 });

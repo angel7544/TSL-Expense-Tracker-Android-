@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext, useMemo } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Modal, TextInput, Alert, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Store, Budget, BudgetSplit } from '../../data/Store';
+import { UIContext } from '../../context/UIContext';
 
 export const BudgetsScreen = () => {
+    const { theme } = useContext(UIContext);
+    const styles = useMemo(() => getStyles(theme), [theme]);
     const [budgets, setBudgets] = useState<Budget[]>([]);
     const [actuals, setActuals] = useState<Record<string, number>>({});
     const [year, setYear] = useState(new Date().getFullYear().toString());
@@ -134,7 +137,7 @@ export const BudgetsScreen = () => {
                 {splits.length > 0 && (
                     <View style={styles.splitsContainer}>
                         <View style={styles.splitsHeader}>
-                            <Ionicons name="git-branch-outline" size={14} color="#6B7280" />
+                            <Ionicons name="git-branch-outline" size={14} color={theme.colors.subtext} />
                             <Text style={styles.splitsHeaderText}>Splits • Total ₹{splitsTotal}</Text>
                         </View>
                         <View style={styles.splitsRow}>
@@ -159,7 +162,7 @@ export const BudgetsScreen = () => {
                 </View>
                 <View style={styles.headerActions}>
                     <TouchableOpacity onPress={() => Store.setAppMode('finance')} style={styles.toggleButton}>
-                        <Ionicons name="swap-horizontal" size={20} color="#4F46E5" />
+                        <Ionicons name="swap-horizontal" size={20} color={theme.colors.primary} />
                     </TouchableOpacity>
                     <TouchableOpacity 
                         onPress={() => { 
@@ -167,7 +170,7 @@ export const BudgetsScreen = () => {
                             setCurrentSplits([]);
                             setModalVisible(true); 
                         }} 
-                        style={styles.addButton}
+                        style={[styles.addButton, { backgroundColor: theme.colors.primary, shadowColor: theme.colors.primary }]}
                     >
                         <Ionicons name="add" size={24} color="#fff" />
                     </TouchableOpacity>
@@ -192,19 +195,28 @@ export const BudgetsScreen = () => {
                             {categories.map(c => (
                                 <TouchableOpacity 
                                     key={c} 
-                                    style={[styles.chip, currentBudget.category === c && styles.chipSelected]}
+                                    style={[
+                                        styles.chip, 
+                                        currentBudget.category === c && { backgroundColor: theme.colors.primary }
+                                    ]}
                                     onPress={() => setCurrentBudget({ ...currentBudget, category: c })}
                                 >
-                                    <Text style={[styles.chipText, currentBudget.category === c && styles.chipTextSelected]}>{c}</Text>
+                                    <Text style={[
+                                        styles.chipText, 
+                                        currentBudget.category === c && styles.chipTextSelected
+                                    ]}>
+                                        {c}
+                                    </Text>
                                 </TouchableOpacity>
                             ))}
                         </ScrollView>
                         <View style={styles.inputWrapper}>
-                            <Ionicons name="create-outline" size={18} color="#9CA3AF" />
+                            <Ionicons name="create-outline" size={18} color={theme.colors.subtext} />
                             <TextInput
                                 style={styles.input}
                                 placeholder="Enter custom category"
-                                value={currentBudget.category || ""}
+                                placeholderTextColor={theme.colors.subtext}
+                                value={currentBudget.category}
                                 onChangeText={t => setCurrentBudget({ ...currentBudget, category: t })}
                             />
                         </View>
@@ -216,6 +228,7 @@ export const BudgetsScreen = () => {
                                 style={styles.input}
                                 keyboardType="numeric"
                                 placeholder="0.00"
+                                placeholderTextColor={theme.colors.subtext}
                                 value={currentBudget.amount?.toString()}
                                 onChangeText={t => setCurrentBudget({ ...currentBudget, amount: Number(t) })}
                             />
@@ -225,10 +238,11 @@ export const BudgetsScreen = () => {
                         {currentSplits.map((s, i) => (
                             <View key={s.id ?? i} style={styles.splitRow}>
                                 <View style={[styles.inputWrapper, { flex: 1, marginBottom: 0 }]}>
-                                    <Ionicons name="pricetag-outline" size={18} color="#9CA3AF" />
+                                    <Ionicons name="pricetag-outline" size={18} color={theme.colors.subtext} />
                                     <TextInput
                                         style={styles.input}
                                         placeholder="Split name"
+                                        placeholderTextColor={theme.colors.subtext}
                                         value={String(s.name || "")}
                                         onChangeText={(t) => {
                                             const next = [...currentSplits];
@@ -243,6 +257,7 @@ export const BudgetsScreen = () => {
                                         style={styles.input}
                                         keyboardType="numeric"
                                         placeholder="0.00"
+                                        placeholderTextColor={theme.colors.subtext}
                                         value={s.amount?.toString() || ""}
                                         onChangeText={(t) => {
                                             const next = [...currentSplits];
@@ -257,8 +272,8 @@ export const BudgetsScreen = () => {
                             onPress={() => setCurrentSplits([...currentSplits, { name: "", amount: 0 }])}
                             style={styles.addSplitButton}
                         >
-                            <Ionicons name="add-circle-outline" size={18} color="#4F46E5" />
-                            <Text style={styles.addSplitText}>Add Split</Text>
+                            <Ionicons name="add-circle-outline" size={18} color={theme.colors.primary} />
+                            <Text style={[styles.addSplitText, { color: theme.colors.primary }]}>Add Split</Text>
                         </TouchableOpacity>
 
                         <View style={styles.modalButtons}>
@@ -270,7 +285,7 @@ export const BudgetsScreen = () => {
                                     <Text style={styles.deleteButtonText}>Delete</Text>
                                 </TouchableOpacity>
                             )}
-                            <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
+                            <TouchableOpacity onPress={handleSave} style={[styles.saveButton, { backgroundColor: theme.colors.primary, shadowColor: theme.colors.primary }]}>
                                 <Text style={styles.saveButtonText}>Save</Text>
                             </TouchableOpacity>
                         </View>
@@ -281,10 +296,10 @@ export const BudgetsScreen = () => {
     );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F3F4F6',
+        backgroundColor: theme.colors.background,
     },
     header: {
         flexDirection: 'row',
@@ -292,9 +307,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         padding: 16,
         paddingTop: 20,
-        backgroundColor: '#fff',
+        backgroundColor: theme.colors.card,
         borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
+        borderBottomColor: theme.colors.border,
     },
     headerActions: {
         flexDirection: 'row',
@@ -303,19 +318,19 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 28,
         fontWeight: '800',
-        color: '#111827',
+        color: theme.colors.text,
         letterSpacing: -0.5,
     },
     subtitle: {
         fontSize: 14,
-        color: '#6B7280',
+        color: theme.colors.subtext,
         fontWeight: '500',
     },
     addButton: {
-        backgroundColor: '#4F46E5',
+        backgroundColor: theme.colors.primary,
         padding: 10,
         borderRadius: 20,
-        shadowColor: "#4F46E5",
+        shadowColor: theme.colors.primary,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
@@ -323,12 +338,12 @@ const styles = StyleSheet.create({
     },
     toggleButton: {
         marginRight: 8,
-        backgroundColor: '#EEF2FF',
+        backgroundColor: theme.mode === 'dark' ? theme.colors.input : '#EEF2FF',
         padding: 8,
         borderRadius: 999,
     },
     card: {
-        backgroundColor: '#fff',
+        backgroundColor: theme.colors.card,
         padding: 20,
         borderRadius: 16,
         marginBottom: 16,
@@ -359,16 +374,16 @@ const styles = StyleSheet.create({
     categoryName: {
         fontSize: 16,
         fontWeight: '700',
-        color: '#1F2937',
+        color: theme.colors.text,
     },
     amountText: {
         fontSize: 14,
-        color: '#6B7280',
+        color: theme.colors.subtext,
         fontWeight: '500',
     },
     progressBarBg: {
         height: 10,
-        backgroundColor: '#F3F4F6',
+        backgroundColor: theme.colors.background,
         borderRadius: 5,
         overflow: 'hidden',
     },
@@ -384,7 +399,7 @@ const styles = StyleSheet.create({
     },
     emptyText: {
         textAlign: 'center',
-        color: '#9CA3AF',
+        color: theme.colors.subtext,
         marginTop: 60,
         fontSize: 16,
     },
@@ -395,7 +410,7 @@ const styles = StyleSheet.create({
         padding: 20,
     },
     modalContent: {
-        backgroundColor: '#fff',
+        backgroundColor: theme.colors.card,
         borderRadius: 24,
         padding: 24,
         shadowColor: "#000",
@@ -409,34 +424,34 @@ const styles = StyleSheet.create({
         fontWeight: '800',
         marginBottom: 20,
         textAlign: 'center',
-        color: '#111827',
+        color: theme.colors.text,
     },
     label: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#374151',
+        color: theme.colors.text,
         marginBottom: 8,
     },
     inputWrapper: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F9FAFB',
+        backgroundColor: theme.colors.background,
         borderRadius: 12,
         borderWidth: 1,
-        borderColor: '#E5E7EB',
+        borderColor: theme.colors.border,
         marginBottom: 20,
         paddingHorizontal: 12,
     },
     currencySymbol: {
         fontSize: 18,
-        color: '#9CA3AF',
+        color: theme.colors.subtext,
         marginRight: 8,
     },
     input: {
         flex: 1,
         paddingVertical: 12,
         fontSize: 18,
-        color: '#1F2937',
+        color: theme.colors.text,
         fontWeight: '600',
     },
     splitRow: {
@@ -448,7 +463,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         alignSelf: 'flex-start',
-        backgroundColor: '#EEF2FF',
+        backgroundColor: theme.mode === 'dark' ? theme.colors.input : '#EEF2FF',
         paddingHorizontal: 12,
         paddingVertical: 8,
         borderRadius: 8,
@@ -456,7 +471,7 @@ const styles = StyleSheet.create({
     },
     addSplitText: {
         marginLeft: 6,
-        color: '#4F46E5',
+        color: theme.colors.primary,
         fontWeight: '600',
     },
     splitDeleteBtn: {
@@ -471,17 +486,17 @@ const styles = StyleSheet.create({
     chip: {
         paddingHorizontal: 16,
         paddingVertical: 8,
-        backgroundColor: '#F3F4F6',
+        backgroundColor: theme.colors.background,
         borderRadius: 20,
         marginRight: 10,
         height: 36,
         justifyContent: 'center',
     },
     chipSelected: {
-        backgroundColor: '#4F46E5',
+        backgroundColor: theme.colors.primary,
     },
     chipText: {
-        color: '#374151',
+        color: theme.colors.subtext,
         fontSize: 14,
         fontWeight: '500',
     },
@@ -501,7 +516,7 @@ const styles = StyleSheet.create({
         marginRight: 10,
     },
     cancelButtonText: {
-        color: '#6B7280',
+        color: theme.colors.subtext,
         fontSize: 16,
         fontWeight: '600',
     },
@@ -509,19 +524,19 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
         paddingHorizontal: 16,
         marginRight: 'auto',
-        backgroundColor: '#FEF2F2',
+        backgroundColor: theme.mode === 'dark' ? 'rgba(239, 68, 68, 0.2)' : '#FEF2F2',
         borderRadius: 8,
     },
     deleteButtonText: {
-        color: '#EF4444',
+        color: theme.colors.danger,
         fontWeight: '600',
     },
     saveButton: {
-        backgroundColor: '#4F46E5',
+        backgroundColor: theme.colors.primary,
         paddingHorizontal: 24,
         paddingVertical: 12,
         borderRadius: 12,
-        shadowColor: "#4F46E5",
+        shadowColor: theme.colors.primary,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
         shadowRadius: 8,
@@ -531,8 +546,7 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontWeight: '700',
         fontSize: 16,
-    }
-    ,
+    },
     splitsContainer: {
         marginTop: 10,
     },
@@ -543,7 +557,7 @@ const styles = StyleSheet.create({
     },
     splitsHeaderText: {
         marginLeft: 6,
-        color: '#6B7280',
+        color: theme.colors.subtext,
         fontSize: 12,
         fontWeight: '600',
     },
@@ -552,7 +566,7 @@ const styles = StyleSheet.create({
         flexWrap: 'wrap',
     },
     splitChip: {
-        backgroundColor: '#F3F4F6',
+        backgroundColor: theme.colors.background,
         paddingHorizontal: 8,
         paddingVertical: 4,
         borderRadius: 12,
@@ -560,7 +574,7 @@ const styles = StyleSheet.create({
         marginBottom: 6,
     },
     splitChipText: {
-        color: '#374151',
+        color: theme.colors.text,
         fontSize: 12,
         fontWeight: '600',
     }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { 
   View, Text, TextInput, TouchableOpacity, Modal, ScrollView, 
   StyleSheet, Alert, Platform, 
@@ -7,6 +7,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Store, ExpenseRecord } from "../data/Store";
 import * as FileSystem from "expo-file-system";
+import { UIContext } from "../context/UIContext";
 
 interface AddRecordModalProps {
   visible: boolean;
@@ -37,27 +38,28 @@ const DropdownInput = ({
     zIndex: number;
 }) => {
     const [isFocused, setIsFocused] = useState(false);
+    const { theme } = useContext(UIContext);
 
     return (
         <View style={{ marginBottom: 20, zIndex: zIndex }}>
             <View style={{ 
                 borderWidth: 1.5, 
-                borderColor: isFocused ? '#007bff' : '#ddd', 
+                borderColor: isFocused ? theme.colors.primary : theme.colors.border, 
                 borderRadius: 8, 
                 height: 56, 
                 justifyContent: 'center',
-                backgroundColor: '#fff',
+                backgroundColor: theme.colors.input,
                 position: 'relative'
             }}>
                 <View style={{ 
                     position: 'absolute', 
                     top: -10, 
                     left: 12, 
-                    backgroundColor: '#fff', 
+                    backgroundColor: theme.colors.card, 
                     paddingHorizontal: 4,
                     zIndex: 1
                 }}>
-                    <Text style={{ fontSize: 12, color: isFocused ? '#007bff' : '#666', fontWeight: '500' }}>{label}</Text>
+                    <Text style={{ fontSize: 12, color: isFocused ? theme.colors.primary : theme.colors.subtext, fontWeight: '500' }}>{label}</Text>
                 </View>
 
                 <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16 }}>
@@ -66,10 +68,11 @@ const DropdownInput = ({
                         onChangeText={onChangeText}
                         onFocus={() => { setIsFocused(true); onFocus(); }}
                         onBlur={() => { setIsFocused(false); onBlur(); }}
-                        style={{ flex: 1, fontSize: 16, color: '#333' }}
+                        style={{ flex: 1, fontSize: 16, color: theme.colors.text }}
+                        placeholderTextColor={theme.colors.placeholder}
                     />
                     <TouchableOpacity onPress={onFocus}>
-                        <Ionicons name="caret-down-outline" size={20} color="#666" />
+                        <Ionicons name="caret-down-outline" size={20} color={theme.colors.subtext} />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -80,9 +83,9 @@ const DropdownInput = ({
                     top: 54, 
                     left: 0, 
                     right: 0, 
-                    backgroundColor: 'white', 
+                    backgroundColor: theme.colors.card, 
                     borderWidth: 1, 
-                    borderColor: '#ddd',
+                    borderColor: theme.colors.border,
                     borderBottomLeftRadius: 8,
                     borderBottomRightRadius: 8,
                     elevation: 5,
@@ -95,8 +98,8 @@ const DropdownInput = ({
                 }}>
                     <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
                         {suggestions.map((item, i) => (
-                            <TouchableOpacity key={i} onPress={() => onSelect(item)} style={{ padding: 16, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}>
-                                <Text style={{fontSize: 14, color: '#333'}}>{item}</Text>
+                            <TouchableOpacity key={i} onPress={() => onSelect(item)} style={{ padding: 16, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
+                                <Text style={{fontSize: 14, color: theme.colors.text}}>{item}</Text>
                             </TouchableOpacity>
                         ))}
                     </ScrollView>
@@ -107,6 +110,7 @@ const DropdownInput = ({
 };
 
 export const AddRecordModal = ({ visible, onClose, onSave, record }: AddRecordModalProps) => {
+  const { theme } = useContext(UIContext);
   const [form, setForm] = useState({
     expense_date: new Date().toISOString().slice(0, 10),
     expense_description: "",
@@ -211,20 +215,30 @@ export const AddRecordModal = ({ visible, onClose, onSave, record }: AddRecordMo
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 16 }}
       >
-        <View style={{ backgroundColor: "#fff", borderRadius: 12, maxHeight: "90%", width: "100%", maxWidth: 600, alignSelf: "center" }}>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", padding: 16, borderBottomWidth: 1, borderColor: "#eee" }}>
-            <Text style={{ fontSize: 18, fontWeight: "600" }}>{record ? "Edit Record" : "Add Record"}</Text>
+        <View style={{ backgroundColor: theme.colors.card, borderRadius: 12, maxHeight: "90%", width: "100%", maxWidth: 600, alignSelf: "center" }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", padding: 16, borderBottomWidth: 1, borderColor: theme.colors.border }}>
+            <Text style={{ fontSize: 18, fontWeight: "600", color: theme.colors.text }}>{record ? "Edit Record" : "Add Record"}</Text>
             <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={24} color="#333" />
+              <Ionicons name="close" size={24} color={theme.colors.text} />
             </TouchableOpacity>
           </View>
           
           <ScrollView contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-            <Text style={styles.label}>Date</Text>
-            <TextInput value={form.expense_date} onChangeText={t => setForm({ ...form, expense_date: t })} style={styles.input} />
+            <Text style={[styles.label, { color: theme.colors.subtext }]}>Date</Text>
+            <TextInput 
+                value={form.expense_date} 
+                onChangeText={t => setForm({ ...form, expense_date: t })} 
+                style={[styles.input, { borderColor: theme.colors.border, color: theme.colors.text, backgroundColor: theme.colors.input }]} 
+                placeholderTextColor={theme.colors.placeholder}
+            />
             
-            <Text style={styles.label}>Description</Text>
-            <TextInput value={form.expense_description} onChangeText={t => setForm({ ...form, expense_description: t })} style={styles.input} />
+            <Text style={[styles.label, { color: theme.colors.subtext }]}>Description</Text>
+            <TextInput 
+                value={form.expense_description} 
+                onChangeText={t => setForm({ ...form, expense_description: t })} 
+                style={[styles.input, { borderColor: theme.colors.border, color: theme.colors.text, backgroundColor: theme.colors.input }]} 
+                placeholderTextColor={theme.colors.placeholder}
+            />
             
             <DropdownInput 
                 label="Category"
@@ -273,16 +287,28 @@ export const AddRecordModal = ({ visible, onClose, onSave, record }: AddRecordMo
             
             <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
               <View style={{ flex: 1, marginRight: 8 }}>
-                  <Text style={styles.label}>Income</Text>
-                  <TextInput value={form.income_amount} onChangeText={t => setForm({ ...form, income_amount: t })} keyboardType="numeric" style={styles.input} />
+                  <Text style={[styles.label, { color: theme.colors.subtext }]}>Income</Text>
+                  <TextInput 
+                    value={form.income_amount} 
+                    onChangeText={t => setForm({ ...form, income_amount: t })} 
+                    keyboardType="numeric" 
+                    style={[styles.input, { borderColor: theme.colors.border, color: theme.colors.text, backgroundColor: theme.colors.input }]} 
+                    placeholderTextColor={theme.colors.placeholder}
+                  />
               </View>
               <View style={{ flex: 1, marginLeft: 8 }}>
-                  <Text style={styles.label}>Expense</Text>
-                  <TextInput value={form.expense_amount} onChangeText={t => setForm({ ...form, expense_amount: t })} keyboardType="numeric" style={styles.input} />
+                  <Text style={[styles.label, { color: theme.colors.subtext }]}>Expense</Text>
+                  <TextInput 
+                    value={form.expense_amount} 
+                    onChangeText={t => setForm({ ...form, expense_amount: t })} 
+                    keyboardType="numeric" 
+                    style={[styles.input, { borderColor: theme.colors.border, color: theme.colors.text, backgroundColor: theme.colors.input }]} 
+                    placeholderTextColor={theme.colors.placeholder}
+                  />
               </View>
             </View>
 
-            <TouchableOpacity onPress={save} style={{ backgroundColor: "#007bff", padding: 12, borderRadius: 6, marginTop: 16 }}>
+            <TouchableOpacity onPress={save} style={{ backgroundColor: theme.colors.primary, padding: 12, borderRadius: 6, marginTop: 16 }}>
               <Text style={{ color: "#fff", textAlign: "center", fontSize: 16, fontWeight: "600" }}>Save Record</Text>
             </TouchableOpacity>
           </ScrollView>

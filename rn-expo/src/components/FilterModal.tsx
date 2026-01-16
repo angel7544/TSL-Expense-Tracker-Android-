@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { View, Text, Modal, TouchableOpacity, ScrollView, StyleSheet } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
 import { Store, FilterOptions } from "../data/Store";
+import { UIContext } from "../context/UIContext";
 
 interface FilterModalProps {
   visible: boolean;
@@ -11,6 +12,7 @@ interface FilterModalProps {
 }
 
 export const FilterModal = ({ visible, onClose, onApply, currentFilters }: FilterModalProps) => {
+  const { theme } = useContext(UIContext);
   const [filters, setFilters] = useState<FilterOptions>({ ...currentFilters });
   const [options, setOptions] = useState<{years: string[], categories: string[], merchants: string[]}>({
       years: [], categories: [], merchants: []
@@ -41,14 +43,12 @@ export const FilterModal = ({ visible, onClose, onApply, currentFilters }: Filte
   const reset = () => {
       const empty = { year: "All", month: "All", category: "All", merchant: "All" };
       setFilters(empty);
-      onApply(empty); // Optional: apply immediately or wait for Apply button? Standard is wait.
-      // But for "Reset" button, users often expect it to clear. I'll just clear local state.
-      // Actually, let's keep it local.
+      onApply(empty); 
   };
 
   const Section = ({ title, items, selected, onSelect }: { title: string, items: string[], selected?: string, onSelect: (v: string) => void }) => (
       <View style={{ marginBottom: 20 }}>
-          <Text style={styles.sectionTitle}>{title}</Text>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{title}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: "row", flexWrap: "wrap" }}>
               {items.map((item, i) => {
                   const isSel = (item === selected) || (!selected && item === "All");
@@ -56,9 +56,21 @@ export const FilterModal = ({ visible, onClose, onApply, currentFilters }: Filte
                     <TouchableOpacity 
                         key={i} 
                         onPress={() => onSelect(item)}
-                        style={[styles.chip, isSel && styles.chipSelected]}
+                        style={[
+                            styles.chip, 
+                            { 
+                                backgroundColor: isSel ? theme.colors.lighter : theme.colors.background,
+                                borderColor: isSel ? theme.colors.primary : 'transparent'
+                            }
+                        ]}
                     >
-                        <Text style={[styles.chipText, isSel && styles.chipTextSelected]}>{item}</Text>
+                        <Text style={[
+                            styles.chipText, 
+                            { 
+                                color: isSel ? theme.colors.primary : theme.colors.subtext,
+                                fontWeight: isSel ? "600" : "400"
+                            }
+                        ]}>{item}</Text>
                     </TouchableOpacity>
                   );
               })}
@@ -69,11 +81,11 @@ export const FilterModal = ({ visible, onClose, onApply, currentFilters }: Filte
   return (
     <Modal visible={visible} animationType="slide" transparent>
       <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Filter Records</Text>
+        <View style={[styles.modalContent, { backgroundColor: theme.colors.card }]}>
+          <View style={[styles.header, { borderColor: theme.colors.border }]}>
+            <Text style={[styles.title, { color: theme.colors.text }]}>Filter Records</Text>
             <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={24} color="#333" />
+              <Ionicons name="close" size={24} color={theme.colors.text} />
             </TouchableOpacity>
           </View>
           
@@ -105,12 +117,12 @@ export const FilterModal = ({ visible, onClose, onApply, currentFilters }: Filte
             <View style={{ height: 40 }} />
           </ScrollView>
 
-          <View style={styles.footer}>
-              <TouchableOpacity onPress={reset} style={[styles.button, styles.buttonOutline]}>
-                  <Text style={{ color: "#333", fontWeight: "600" }}>Reset</Text>
+          <View style={[styles.footer, { borderColor: theme.colors.border }]}>
+              <TouchableOpacity onPress={reset} style={[styles.button, { backgroundColor: theme.colors.card, borderWidth: 1, borderColor: theme.colors.border }]}>
+                  <Text style={{ color: theme.colors.text, fontWeight: "600" }}>Reset</Text>
               </TouchableOpacity>
               <View style={{ width: 12 }} />
-              <TouchableOpacity onPress={apply} style={[styles.button, styles.buttonPrimary]}>
+              <TouchableOpacity onPress={apply} style={[styles.button, { backgroundColor: theme.colors.primary }]}>
                   <Text style={{ color: "#fff", fontWeight: "600" }}>Apply Filters</Text>
               </TouchableOpacity>
           </View>

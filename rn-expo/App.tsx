@@ -4,6 +4,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createMaterialTopTabNavigator } from "@react-navigation/material-top-tabs";
 import { enableScreens } from "react-native-screens";
 import { Ionicons } from "@expo/vector-icons";
+import { getTheme, Palettes } from './src/constants/Theme';
 import HomeScreen from "./src/screens/HomeScreen";
 import ListScreen from "./src/screens/ListScreen";
 import SettingsScreen from "./src/screens/SettingsScreen";
@@ -18,8 +19,10 @@ import LockScreen from "./src/screens/LockScreen";
 import { PlannerNavigator } from "./src/screens/planner/PlannerNavigator";
 import { NotificationService } from "./src/services/NotificationService";
 import OnboardingScreen from "./src/screens/OnboardingScreen";
+import { BlurView } from "expo-blur";
+import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 
-const CustomTabBarButton = ({ children, onPress }: any) => (
+const CustomTabBarButton = ({ children, onPress, backgroundColor }: any) => (
     <TouchableOpacity
         style={{
             top: -20,
@@ -33,10 +36,10 @@ const CustomTabBarButton = ({ children, onPress }: any) => (
             width: 60,
             height: 60,
             borderRadius: 30,
-            backgroundColor: '#8B5CF6', // Purple-ish
+            backgroundColor: backgroundColor || '#8B5CF6', // Purple-ish
             justifyContent: 'center',
             alignItems: 'center',
-            shadowColor: '#8B5CF6',
+            shadowColor: backgroundColor || '#8B5CF6',
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.3,
             shadowRadius: 4,
@@ -47,13 +50,101 @@ const CustomTabBarButton = ({ children, onPress }: any) => (
     </TouchableOpacity>
 );
 
-function MyTabBar({ state, descriptors, navigation, onAddPress }: any) {
+function MyTabBar({ state, descriptors, navigation, onAddPress, navbarStyle, theme }: any) {
+    const insets = useSafeAreaInsets();
     const focusedRoute = state.routes[state.index];
     const focusedDescriptor = descriptors[focusedRoute.key];
     const focusedOptions = focusedDescriptor.options;
 
     if (focusedOptions.tabBarStyle?.display === "none") {
         return null;
+    }
+
+    if (navbarStyle === 'glass') {
+        return (
+            <View style={{
+                position: 'absolute',
+                bottom: 25,
+                left: 20,
+                right: 20,
+                height: 70,
+                borderRadius: 35,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 10 },
+                shadowOpacity: 0.25,
+                shadowRadius: 10,
+                elevation: 5,
+            }}>
+                <View style={{
+                    position: 'absolute',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    borderRadius: 35,
+                    overflow: 'hidden',
+                }}>
+                    <BlurView
+                        intensity={90}
+                        tint={theme?.mode === 'dark' ? 'dark' : 'light'}
+                        style={{ flex: 1 }}
+                    />
+                    <View style={{
+                        position: 'absolute', top: 0, bottom: 0, left: 0, right: 0,
+                        backgroundColor: theme?.mode === 'dark' ? 'rgba(30,30,30,0.5)' : 'rgba(255,255,255,0.4)'
+                    }} />
+                </View>
+                
+                <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    height: '100%',
+                    paddingHorizontal: 10,
+                }}>
+                    {state.routes.map((route: any, index: number) => {
+                        const { options } = descriptors[route.key];
+                        const isFocused = state.index === index;
+                        const onPress = () => {
+                            const event = navigation.emit({
+                                type: 'tabPress',
+                                target: route.key,
+                                canPreventDefault: true,
+                            });
+                            if (!isFocused && !event.defaultPrevented) {
+                                navigation.navigate(route.name);
+                            }
+                        };
+                        
+                        const color = isFocused ? (theme?.colors?.primary || "#4F46E5") : (theme?.mode === 'dark' ? "#9CA3AF" : "#6B7280");
+                        const icon = options.tabBarIcon ? options.tabBarIcon({ focused: isFocused, color, size: 24 }) : null;
+                        
+                        if (route.name === 'List') {
+                             return (
+                                 <React.Fragment key={route.key}>
+                                     <TouchableOpacity onPress={onPress} style={{ flex: 1, alignItems: 'center', justifyContent: 'center', height: '100%' }}>{icon}</TouchableOpacity>
+                                     <TouchableOpacity onPress={onAddPress} style={{
+                                         width: 50, height: 50, borderRadius: 25, 
+                                         backgroundColor: theme?.colors?.primary || '#4F46E5',
+                                         justifyContent: 'center', alignItems: 'center',
+                                         shadowColor: theme?.colors?.primary || '#4F46E5', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8
+                                     }}>
+                                         <Ionicons name="add" size={30} color="white" />
+                                     </TouchableOpacity>
+                                 </React.Fragment>
+                             );
+                        }
+
+                        return (
+                            <TouchableOpacity
+                                key={route.key}
+                                onPress={onPress}
+                                style={{ flex: 1, alignItems: 'center', justifyContent: 'center', height: '100%' }}
+                            >
+                                {icon}
+                            </TouchableOpacity>
+                        );
+                    })}
+                </View>
+            </View>
+        );
     }
 
     return (
@@ -64,7 +155,7 @@ function MyTabBar({ state, descriptors, navigation, onAddPress }: any) {
         left: 20,
         right: 20,
         elevation: 0,
-        backgroundColor: '#ffffff',
+        backgroundColor: theme?.colors?.card || '#ffffff',
         borderRadius: 25,
         height: 65,
         shadowColor: "#000",
@@ -96,7 +187,7 @@ function MyTabBar({ state, descriptors, navigation, onAddPress }: any) {
                 }
             };
     
-            const color = isFocused ? "#8B5CF6" : "#CDCDE0";
+            const color = isFocused ? (theme?.colors?.primary || "#8B5CF6") : (theme?.mode === 'dark' ? "#9CA3AF" : "#CDCDE0");
             const icon = options.tabBarIcon ? options.tabBarIcon({ focused: isFocused, color, size: 24 }) : null;
             
             const TabItem = (
@@ -114,7 +205,7 @@ function MyTabBar({ state, descriptors, navigation, onAddPress }: any) {
                 return (
                     <React.Fragment key={route.key}>
                         {TabItem}
-                        <CustomTabBarButton onPress={onAddPress}>
+                        <CustomTabBarButton onPress={onAddPress} backgroundColor={theme?.colors?.primary}>
                             <Ionicons name="add" size={32} color="white" />
                         </CustomTabBarButton>
                     </React.Fragment>
@@ -135,6 +226,9 @@ export default function App() {
   const [isLocked, setIsLocked] = useState(false);
   const appState = useRef(AppState.currentState);
   const [appMode, setAppMode] = useState(Store.appMode);
+  const [navbarStyle, setNavbarStyle] = useState(Store.settings.navbar_style || 'classic');
+  const [themeName, setThemeName] = useState(Store.settings.theme_name || 'indigo');
+  const [themeMode, setThemeMode] = useState(Store.settings.theme_mode || 'light');
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
@@ -180,6 +274,9 @@ export default function App() {
     const unsub = Store.subscribe(() => {
         setIsAuthenticated(Store.isAuthenticated);
         setAppMode(Store.appMode);
+        setNavbarStyle(Store.settings.navbar_style || 'classic');
+        setThemeName(Store.settings.theme_name || 'indigo');
+        setThemeMode(Store.settings.theme_mode || 'light');
         if (!Store.isAuthenticated) {
             setIsLocked(false);
         }
@@ -205,115 +302,112 @@ export default function App() {
     };
   }, []);
 
-  if (!ready) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" color="#007bff" />
-      </View>
-    );
-  }
-
-  if (isLocked && isAuthenticated) {
-      return <LockScreen onUnlock={() => setIsLocked(false)} />;
-  }
-
-  if (showOnboarding) {
-      return <OnboardingScreen onComplete={() => {
-          Store.setSettings({ onboarding_completed: true });
-          setShowOnboarding(false);
-      }} />;
-  }
-
+  const currentTheme = getTheme(themeName, themeMode);
   const Tab = createMaterialTopTabNavigator();
   
   return (
-    <UIContext.Provider value={{ 
-        showAddModal: () => setAddModalVisible(true),
-        showOnboarding: () => setShowOnboarding(true)
-    }}>
-        <NavigationContainer>
-        {appMode === 'planner' ? (
-            <PlannerNavigator />
+    <SafeAreaProvider>
+        {!ready ? (
+            <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: currentTheme.colors.background }}>
+                <ActivityIndicator size="large" color={currentTheme.colors.primary} />
+            </View>
+        ) : isLocked && isAuthenticated ? (
+            <LockScreen onUnlock={() => setIsLocked(false)} />
+        ) : showOnboarding ? (
+            <OnboardingScreen onComplete={() => {
+                Store.setSettings({ onboarding_completed: true });
+                setShowOnboarding(false);
+            }} />
         ) : (
-            <Tab.Navigator
-                initialRouteName={initialRoute}
-                tabBarPosition="bottom"
-                tabBar={props => <MyTabBar {...props} onAddPress={() => setAddModalVisible(true)} />}
-                screenOptions={{
-                    swipeEnabled: true,
-                    tabBarShowLabel: false,
-                    tabBarIndicatorStyle: { height: 0 },
-                }}
-            >
-                <Tab.Screen 
-                    name="Home" 
-                    component={HomeScreen} 
-                    options={{
-                        tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "home" : "home-outline"} size={24} color={color} />
-                    }}
-                />
+            <UIContext.Provider value={{
+                showAddModal: () => setAddModalVisible(true),
+                showOnboarding: () => setShowOnboarding(true),
+                theme: currentTheme
+            }}>
+                <NavigationContainer>
+                    {appMode === 'planner' ? (
+                        <PlannerNavigator />
+                    ) : (
+                        <Tab.Navigator
+                            initialRouteName={initialRoute}
+                            tabBarPosition="bottom"
+                            tabBar={props => <MyTabBar {...props} onAddPress={() => setAddModalVisible(true)} navbarStyle={navbarStyle} theme={currentTheme} />}
+                            screenOptions={{
+                                swipeEnabled: true,
+                                tabBarShowLabel: false,
+                                tabBarIndicatorStyle: { height: 0 },
+                            }}
+                        >
+                            <Tab.Screen
+                                name="Home"
+                                component={HomeScreen}
+                                options={{
+                                    tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "home" : "home-outline"} size={24} color={color} />
+                                }}
+                            />
 
-                <Tab.Screen 
-                    name="List" 
-                    component={ListScreen} 
-                    options={{
-                        tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "wallet" : "wallet-outline"} size={24} color={color} />
-                    }}
-                />
+                            <Tab.Screen
+                                name="List"
+                                component={ListScreen}
+                                options={{
+                                    tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "wallet" : "wallet-outline"} size={24} color={color} />
+                                }}
+                            />
 
-                <Tab.Screen 
-                    name="Charts" 
-                    component={ChartsScreen} 
-                    options={{
-                        tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "pie-chart" : "pie-chart-outline"} size={24} color={color} />
-                    }}
+                            <Tab.Screen
+                                name="Charts"
+                                component={ChartsScreen}
+                                options={{
+                                    tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "pie-chart" : "pie-chart-outline"} size={24} color={color} />
+                                }}
+                            />
+
+                            <Tab.Screen
+                                name="Report"
+                                component={ReportScreen}
+                                options={{
+                                    tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "document-text" : "document-text-outline"} size={24} color={color} />
+                                }}
+                            />
+
+                            {isAuthenticated ? (
+                                <Tab.Screen
+                                    name="Settings"
+                                    component={SettingsScreen}
+                                    options={{
+                                        tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "person" : "person-outline"} size={24} color={color} />
+                                    }}
+                                />
+                            ) : (
+                                <Tab.Screen
+                                    name="Login"
+                                    component={AuthScreen}
+                                    options={{
+                                        tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "log-in" : "log-in-outline"} size={24} color={color} />,
+                                        tabBarStyle: { display: "none" },
+                                    }}
+                                />
+                            )}
+                            {isAuthenticated && (
+                                <Tab.Screen
+                                    name="Backup"
+                                    component={BackupScreen}
+                                    options={{
+                                        tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "cloud-upload" : "cloud-upload-outline"} size={24} color={color} />
+                                    }}
+                                />
+                            )}
+                        </Tab.Navigator>
+                    )}
+                </NavigationContainer>
+
+                <AddRecordModal
+                    visible={addModalVisible}
+                    onClose={() => setAddModalVisible(false)}
+                    onSave={() => setAddModalVisible(false)}
                 />
-                
-                <Tab.Screen 
-                    name="Report" 
-                    component={ReportScreen} 
-                    options={{
-                        tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "document-text" : "document-text-outline"} size={24} color={color} />
-                    }}
-                />
-            
-                {isAuthenticated ? (
-                <Tab.Screen 
-                    name="Settings" 
-                    component={SettingsScreen} 
-                    options={{
-                        tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "person" : "person-outline"} size={24} color={color} />
-                    }}
-                />
-                ) : (
-                <Tab.Screen 
-                    name="Login" 
-                    component={AuthScreen} 
-                    options={{
-                        tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "log-in" : "log-in-outline"} size={24} color={color} />,
-                        tabBarStyle: { display: "none" },
-                    }}
-                />
-                )}
-                {isAuthenticated && (
-                <Tab.Screen 
-                    name="Backup" 
-                    component={BackupScreen} 
-                    options={{
-                        tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "cloud-upload" : "cloud-upload-outline"} size={24} color={color} />
-                    }}
-                />
-                )}
-            </Tab.Navigator>
+            </UIContext.Provider>
         )}
-        </NavigationContainer>
-        
-        <AddRecordModal 
-            visible={addModalVisible} 
-            onClose={() => setAddModalVisible(false)} 
-            onSave={() => setAddModalVisible(false)}
-        />
-    </UIContext.Provider>
+    </SafeAreaProvider>
   );
 }
-

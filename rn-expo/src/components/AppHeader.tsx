@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { 
   View, Text, Image, TouchableOpacity, Modal, StyleSheet, Linking, Platform, Dimensions, Alert,
   GestureResponderEvent
@@ -13,8 +13,10 @@ import { Store } from "../data/Store";
 import { ImportExport } from "../services/ImportExport";
 import { InputModal } from "./InputModal";
 import { InfoModal } from "./InfoModal";
+import { UIContext } from "../context/UIContext";
 
 export const AppHeader = ({ title, subtitle, showCreateDB = false }: { title?: string, subtitle?: string, showCreateDB?: boolean }) => {
+  const { theme } = useContext(UIContext);
   const [modalVisible, setModalVisible] = useState(false);
   const [logoUri, setLogoUri] = useState<string | null>(null);
   const [newFileModalVisible, setNewFileModalVisible] = useState(false);
@@ -128,7 +130,7 @@ export const AppHeader = ({ title, subtitle, showCreateDB = false }: { title?: s
         const dbName = `db_${Date.now()}.db`;
         await Store.switchDatabase(dbName);
         await Store.addRecentDatabase(name, dbName);
-        const displayName = name.length > 10 ? name.slice(0, 10) : name;
+        const displayName = name.length > 5 ? name.slice(0, 5) : name;
         Alert.alert("Success", `Created new database: ${displayName}`);
     } catch (e: any) {
         Alert.alert("Error", e.message);
@@ -178,40 +180,40 @@ export const AppHeader = ({ title, subtitle, showCreateDB = false }: { title?: s
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.colors.card, borderBottomColor: theme.colors.border }]}>
       <View style={styles.leftRow}>
         <TouchableOpacity onPress={() => setModalVisible(true)}>
             {logoUri ? (
                 <Image source={{ uri: logoUri }} style={styles.logo} />
             ) : (
-                <View style={styles.logoPlaceholder}>
+                <View style={[styles.logoPlaceholder, { backgroundColor: theme.colors.primary }]}>
                     <Text style={styles.logoText}>TSL</Text>
                 </View>
             )}
         </TouchableOpacity>
         <View style={styles.textContainer}>
-            {title && <Text style={styles.title}>{title}</Text>}
-            {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+            {title && <Text style={[styles.title, { color: theme.colors.text }]}>{title}</Text>}
+            {subtitle && <Text style={[styles.subtitle, { color: theme.colors.subtext }]}>{subtitle}</Text>}
         </View>
       </View>
 
       <View style={styles.rightRow}>
         {showCreateDB && (
-            <TouchableOpacity onPress={() => setNewFileModalVisible(true)} style={styles.iconButton}>
-                <Ionicons name="add" size={24} color="#007bff" />
+            <TouchableOpacity onPress={() => setNewFileModalVisible(true)} style={[styles.iconButton, { backgroundColor: theme.mode === 'dark' ? '#374151' : '#F3F4F6' }]}>
+                <Ionicons name="add" size={24} color={theme.colors.primary} />
             </TouchableOpacity>
         )}
-        <TouchableOpacity onPress={handleImport} style={styles.iconButton}>
-            <Ionicons name="file-tray-full-outline" size={24} color="#007bff" />
+        <TouchableOpacity onPress={handleImport} style={[styles.iconButton, { backgroundColor: theme.mode === 'dark' ? '#374151' : '#F3F4F6' }]}>
+            <Ionicons name="file-tray-full-outline" size={24} color={theme.colors.text} />
         </TouchableOpacity>
-        <TouchableOpacity onPress={handleExport} style={styles.iconButton}>
-            <Ionicons name="share-social-outline" size={24} color="#007bff" />
+        <TouchableOpacity onPress={handleExport} style={[styles.iconButton, { backgroundColor: theme.mode === 'dark' ? '#374151' : '#F3F4F6' }]}>
+            <Ionicons name="share-social-outline" size={24} color={theme.colors.text} />
         </TouchableOpacity>
-        {onLogout && (
+        {/* {onLogout && (
             <TouchableOpacity onPress={onLogout} style={[styles.iconButton, { backgroundColor: '#FEE2E2' }]}>
                 <Ionicons name="log-out-outline" size={24} color="#EF4444" />
             </TouchableOpacity>
-        )}
+        )} */}
       </View>
 
       <InputModal

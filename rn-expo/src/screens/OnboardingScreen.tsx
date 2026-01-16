@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useContext, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Store } from '../data/Store';
+import { UIContext } from '../context/UIContext';
+import { getTheme } from '../constants/Theme';
 
 interface OnboardingItem {
   id: string;
@@ -67,6 +69,9 @@ interface OnboardingScreenProps {
 
 export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   const { width, height } = useWindowDimensions();
+  const { theme } = useContext(UIContext);
+  const styles = useMemo(() => getStyles(theme), [theme]);
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollX = useRef(new Animated.Value(0)).current;
   const slidesRef = useRef<FlatList>(null);
@@ -93,7 +98,7 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
       <View style={[styles.slide, { width }]}>
         <View style={[styles.imageContainer, { backgroundColor: item.color + '20' }]}>
             {item.useLogo && settings?.company_logo ? (
-                <Image source={{ uri: settings.company_logo }} style={{ width: 140, height: 140, borderRadius: 70, backgroundColor: '#fff' }} resizeMode="contain" />
+                <Image source={{ uri: settings.company_logo }} style={{ width: 140, height: 140, borderRadius: 70, backgroundColor: theme.colors.card }} resizeMode="contain" />
             ) : (
                 <Ionicons name={item.icon} size={100} color={item.color} />
             )}
@@ -188,10 +193,10 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: theme.colors.background,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -218,11 +223,12 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginBottom: 10,
     textAlign: 'center',
+    color: theme.colors.text,
   },
   description: {
     fontSize: 16,
     fontWeight: '400',
-    color: '#666',
+    color: theme.colors.subtext,
     textAlign: 'center',
     paddingHorizontal: 10,
     lineHeight: 24,
@@ -266,7 +272,7 @@ const styles = StyleSheet.create({
       padding: 10,
   },
   skipText: {
-      color: '#999',
+      color: theme.colors.subtext,
       fontSize: 14,
   }
 });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useMemo } from "react";
 import { View, Text, TextInput, TouchableOpacity, Alert, ScrollView, StyleSheet, Platform, Image, Dimensions, KeyboardAvoidingView, Switch, GestureResponderEvent } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
@@ -12,11 +12,13 @@ import { AppHeader } from "../components/AppHeader";
 import { InputModal } from "../components/InputModal";
 import { InfoModal } from "../components/InfoModal";
 import { UIContext } from "../context/UIContext";
+import { Palettes } from "../constants/Theme";
 
 const { width, height } = Dimensions.get("window");
 
 export default function SettingsScreen({ navigation }: any) {
-  const { showOnboarding } = useContext(UIContext);
+  const { theme, showOnboarding } = useContext(UIContext);
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const [settings, setSettings] = useState(Store.getSettings());
   const [pass, setPass] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(Store.isAuthenticated);
@@ -230,10 +232,10 @@ export default function SettingsScreen({ navigation }: any) {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#F3F4F6" }}>
+    <View style={styles.container}>
       <AppHeader title="Settings" subtitle="App Preferences" />
       <ScrollView 
-        style={{ flex: 1, padding: 20 }}
+        style={styles.content}
         contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
         showsHorizontalScrollIndicator={false}
@@ -241,7 +243,7 @@ export default function SettingsScreen({ navigation }: any) {
       
       <View style={{ position: 'absolute', top: 10, right: 10, zIndex: 10 }}>
         <TouchableOpacity onPress={() => setInfoModalVisible(true)}>
-            <Ionicons name="information-circle-outline" size={24} color="#4F46E5" />
+            <Ionicons name="information-circle-outline" size={24} color={theme.colors.primary} />
         </TouchableOpacity>
       </View>
 
@@ -250,7 +252,7 @@ export default function SettingsScreen({ navigation }: any) {
       <View style={styles.modernCard}>
         <View style={styles.fieldRow}>
             <View style={styles.fieldIcon}>
-                <Ionicons name="business-outline" size={20} color="#4F46E5" />
+                <Ionicons name="business-outline" size={20} color={theme.colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
                 <Text style={styles.fieldLabel}>Company Name</Text>
@@ -259,6 +261,7 @@ export default function SettingsScreen({ navigation }: any) {
                     onChangeText={t => updateSetting("company_name", t)} 
                     style={styles.cleanInput}
                     placeholder="Enter Company Name" 
+                    placeholderTextColor={theme.colors.placeholder}
                 />
             </View>
         </View>
@@ -266,7 +269,7 @@ export default function SettingsScreen({ navigation }: any) {
 
         <View style={styles.fieldRow}>
             <View style={styles.fieldIcon}>
-                <Ionicons name="location-outline" size={20} color="#4F46E5" />
+                <Ionicons name="location-outline" size={20} color={theme.colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
                 <Text style={styles.fieldLabel}>Company Address</Text>
@@ -275,6 +278,7 @@ export default function SettingsScreen({ navigation }: any) {
                     onChangeText={t => updateSetting("company_address", t)} 
                     style={styles.cleanInput} 
                     placeholder="Address"
+                    placeholderTextColor={theme.colors.placeholder}
                 />
             </View>
         </View>
@@ -282,7 +286,7 @@ export default function SettingsScreen({ navigation }: any) {
         
         <View style={styles.fieldRow}>
             <View style={styles.fieldIcon}>
-                <Ionicons name="person-circle-outline" size={20} color="#4F46E5" />
+                <Ionicons name="person-circle-outline" size={20} color={theme.colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
                 <Text style={styles.fieldLabel}>Admin Name</Text>
@@ -291,6 +295,7 @@ export default function SettingsScreen({ navigation }: any) {
                     onChangeText={t => updateSetting("admin_name", t)} 
                     style={styles.cleanInput}
                     placeholder="Your Name" 
+                    placeholderTextColor={theme.colors.placeholder}
                 />
             </View>
         </View>
@@ -298,7 +303,7 @@ export default function SettingsScreen({ navigation }: any) {
         
         <View style={styles.fieldRow}>
             <View style={styles.fieldIcon}>
-                <Ionicons name="briefcase-outline" size={20} color="#4F46E5" />
+                <Ionicons name="briefcase-outline" size={20} color={theme.colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
                 <Text style={styles.fieldLabel}>Role / Title</Text>
@@ -307,6 +312,7 @@ export default function SettingsScreen({ navigation }: any) {
                     onChangeText={t => updateSetting("admin_role", t)} 
                     style={styles.cleanInput} 
                     placeholder="e.g. Finance Manager"
+                    placeholderTextColor={theme.colors.placeholder}
                 />
             </View>
         </View>
@@ -314,7 +320,7 @@ export default function SettingsScreen({ navigation }: any) {
 
         <View style={styles.fieldRow}>
             <View style={styles.fieldIcon}>
-                <Ionicons name="call-outline" size={20} color="#4F46E5" />
+                <Ionicons name="call-outline" size={20} color={theme.colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
                 <Text style={styles.fieldLabel}>Contact Info</Text>
@@ -323,6 +329,7 @@ export default function SettingsScreen({ navigation }: any) {
                     onChangeText={t => updateSetting("company_contact", t)} 
                     style={styles.cleanInput} 
                     placeholder="Email or Phone"
+                    placeholderTextColor={theme.colors.placeholder}
                 />
             </View>
         </View>
@@ -330,7 +337,7 @@ export default function SettingsScreen({ navigation }: any) {
 
         <View style={styles.fieldRow}>
             <View style={styles.fieldIcon}>
-                <Ionicons name="receipt-outline" size={20} color="#4F46E5" />
+                <Ionicons name="receipt-outline" size={20} color={theme.colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
                 <Text style={styles.fieldLabel}>Company GSTIN</Text>
@@ -339,6 +346,7 @@ export default function SettingsScreen({ navigation }: any) {
                     onChangeText={t => updateSetting("company_gst", t)} 
                     style={styles.cleanInput} 
                     placeholder="GST Number"
+                    placeholderTextColor={theme.colors.placeholder}
                 />
             </View>
         </View>
@@ -354,13 +362,14 @@ export default function SettingsScreen({ navigation }: any) {
                      onChangeText={t => updateSetting("admin_signature", t)} 
                      style={styles.cleanInput} 
                      placeholder="e.g. Authorized Signatory"
+                     placeholderTextColor={theme.colors.placeholder}
                  />
              </View>
          </View>
          
          <View style={{ marginTop: 15, flexDirection: "row", alignItems: "center" }}>
             <TouchableOpacity onPress={pickSignature} style={styles.uploadButton}>
-                <Ionicons name="image-outline" size={18} color="#4F46E5" />
+                <Ionicons name="image-outline" size={18} color={theme.colors.primary} />
                 <Text style={styles.uploadButtonText}>Upload Signature</Text>
             </TouchableOpacity>
             {(signaturePreview || settings.admin_signature_image) && (
@@ -412,7 +421,7 @@ export default function SettingsScreen({ navigation }: any) {
 
          <View style={{ marginTop: 20, flexDirection: "row", alignItems: "center" }}>
             <TouchableOpacity onPress={pickLogo} style={styles.uploadButton}>
-                <Ionicons name="images-outline" size={18} color="#4F46E5" />
+                <Ionicons name="images-outline" size={18} color={theme.colors.primary} />
                 <Text style={styles.uploadButtonText}>Upload Logo</Text>
             </TouchableOpacity>
             {(logoPreview || settings.company_logo) && (
@@ -427,11 +436,105 @@ export default function SettingsScreen({ navigation }: any) {
          </TouchableOpacity>
       </View>
 
+      <Text style={styles.sectionTitle}>APPEARANCE</Text>
+      <View style={styles.modernCard}>
+        <View style={styles.fieldRow}>
+            <View style={styles.fieldIcon}>
+                <Ionicons name="color-palette-outline" size={20} color={theme.colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+                <Text style={styles.fieldLabel}>Navigation Style</Text>
+                <Text style={styles.actionSubtitle}>Choose your bottom bar look</Text>
+            </View>
+        </View>
+        
+        <View style={{ flexDirection: 'row', marginTop: 12, gap: 10, marginBottom: 16 }}>
+            {['classic', 'glass'].map((style) => (
+                <TouchableOpacity 
+                    key={style}
+                    style={[
+                        styles.dbOption, 
+                        { flex: 1, marginBottom: 0 },
+                        (settings.navbar_style === style || (!settings.navbar_style && style === 'classic')) && styles.dbOptionActive
+                    ]}
+                    onPress={() => {
+                        const newSettings = { ...settings, navbar_style: style as 'classic' | 'glass' };
+                        setSettings(newSettings);
+                        Store.setSettings(newSettings);
+                    }}
+                >
+                    <Text style={[
+                        styles.dbOptionText, 
+                        { textAlign: 'center' },
+                        (settings.navbar_style === style || (!settings.navbar_style && style === 'classic')) && styles.dbOptionTextActive
+                    ]}>
+                        {style.charAt(0).toUpperCase() + style.slice(1)}
+                    </Text>
+                </TouchableOpacity>
+            ))}
+        </View>
+        
+        <View style={styles.separator} />
+        
+        <View style={styles.fieldRow}>
+            <View style={styles.fieldIcon}>
+                <Ionicons name="color-filter-outline" size={20} color={theme.colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+                <Text style={styles.fieldLabel}>App Theme</Text>
+                <Text style={styles.actionSubtitle}>Select your primary color</Text>
+            </View>
+        </View>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 12, marginBottom: 4 }}>
+            {Object.keys(Palettes).map((p) => (
+                <TouchableOpacity
+                    key={p}
+                    onPress={() => {
+                        const newSettings = { ...settings, theme_name: p as any };
+                        setSettings(newSettings);
+                        Store.setSettings(newSettings);
+                    }}
+                    style={{
+                        width: 44, height: 44, borderRadius: 22,
+                        backgroundColor: Palettes[p as keyof typeof Palettes].primary,
+                        justifyContent: 'center', alignItems: 'center',
+                        borderWidth: (settings.theme_name || 'indigo') === p ? 3 : 0,
+                        borderColor: theme.colors.text
+                    }}
+                >
+                    {(settings.theme_name || 'indigo') === p && <Ionicons name="checkmark" size={24} color="#fff" />}
+                </TouchableOpacity>
+            ))}
+        </View>
+
+        <View style={styles.separator} />
+
+        <View style={styles.fieldRow}>
+            <View style={styles.fieldIcon}>
+                <Ionicons name={(settings.theme_mode || 'light') === 'dark' ? "moon" : "sunny"} size={20} color={theme.colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+                <Text style={styles.fieldLabel}>Dark Mode</Text>
+                <Text style={styles.actionSubtitle}>Switch between light and dark themes</Text>
+            </View>
+             <Switch 
+                value={(settings.theme_mode || 'light') === 'dark'}
+                onValueChange={(v) => {
+                    const newSettings = { ...settings, theme_mode: (v ? 'dark' : 'light') as 'dark' | 'light' };
+                    setSettings(newSettings);
+                    Store.setSettings(newSettings);
+                }}
+                trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+                thumbColor={"#fff"}
+            />
+        </View>
+      </View>
+
       <Text style={styles.sectionTitle}>SECURITY</Text>
       <View style={styles.modernCard}>
           <View style={styles.fieldRow}>
               <View style={styles.fieldIcon}>
-                  <Ionicons name="lock-closed-outline" size={20} color="#4F46E5" />
+                  <Ionicons name="lock-closed-outline" size={20} color={theme.colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
                   <Text style={styles.fieldLabel}>App Lock</Text>
@@ -440,7 +543,7 @@ export default function SettingsScreen({ navigation }: any) {
               <Switch 
                   value={settings.lock_enabled} 
                   onValueChange={toggleLock}
-                  trackColor={{ false: "#D1D5DB", true: "#4F46E5" }}
+                  trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
                   thumbColor={"#fff"}
               />
           </View>
@@ -450,13 +553,13 @@ export default function SettingsScreen({ navigation }: any) {
                 <View style={styles.separator} />
                 <TouchableOpacity onPress={changePin} style={styles.fieldRow}>
                     <View style={styles.fieldIcon}>
-                        <Ionicons name="keypad-outline" size={20} color="#4F46E5" />
+                        <Ionicons name="keypad-outline" size={20} color={theme.colors.primary} />
                     </View>
                     <View style={{ flex: 1 }}>
                         <Text style={styles.fieldLabel}>Change PIN</Text>
                         <Text style={styles.actionSubtitle}>Update your 4-digit PIN</Text>
                     </View>
-                    <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
+                    <Ionicons name="chevron-forward" size={20} color={theme.colors.border} />
                 </TouchableOpacity>
 
                 {biometricsAvailable && (
@@ -464,7 +567,7 @@ export default function SettingsScreen({ navigation }: any) {
                         <View style={styles.separator} />
                         <View style={styles.fieldRow}>
                             <View style={styles.fieldIcon}>
-                                <Ionicons name="finger-print-outline" size={20} color="#4F46E5" />
+                                <Ionicons name="finger-print-outline" size={20} color={theme.colors.primary} />
                             </View>
                             <View style={{ flex: 1 }}>
                                 <Text style={styles.fieldLabel}>Biometrics</Text>
@@ -473,7 +576,7 @@ export default function SettingsScreen({ navigation }: any) {
                             <Switch 
                                 value={!!settings.biometrics_enabled} 
                                 onValueChange={toggleBiometrics}
-                                trackColor={{ false: "#D1D5DB", true: "#4F46E5" }}
+                                trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
                                 thumbColor={"#fff"}
                             />
                         </View>
@@ -486,7 +589,7 @@ export default function SettingsScreen({ navigation }: any) {
 
           <View style={styles.fieldRow}>
               <View style={styles.fieldIcon}>
-                  <Ionicons name="key-outline" size={20} color="#F59E0B" />
+                  <Ionicons name="key-outline" size={20} color={theme.colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
                   <Text style={styles.fieldLabel}>Change Password</Text>
@@ -508,7 +611,7 @@ export default function SettingsScreen({ navigation }: any) {
       <View style={styles.modernCard}>
           <View style={styles.fieldRow}>
               <View style={styles.fieldIcon}>
-                  <Ionicons name="server-outline" size={20} color="#4F46E5" />
+                  <Ionicons name="server-outline" size={20} color={theme.colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
                   <Text style={styles.fieldLabel}>Primary Database</Text>
@@ -524,7 +627,7 @@ export default function SettingsScreen({ navigation }: any) {
                           }}
                       >
                           <Text style={[styles.dbOptionText, (!settings.primary_db || settings.primary_db === 'tsl_expenses.db') && styles.dbOptionTextActive]}>Default (tsl_expenses.db)</Text>
-                          {(!settings.primary_db || settings.primary_db === 'tsl_expenses.db') && <Ionicons name="checkmark-circle" size={18} color="#4F46E5" />}
+                          {(!settings.primary_db || settings.primary_db === 'tsl_expenses.db') && <Ionicons name="checkmark-circle" size={18} color={theme.colors.primary} />}
                       </TouchableOpacity>
                       
                       {availableDbs.filter(d => d.dbName !== 'tsl_expenses.db').map(db => (
@@ -540,7 +643,7 @@ export default function SettingsScreen({ navigation }: any) {
                               <Text style={[styles.dbOptionText, settings.primary_db === db.dbName && styles.dbOptionTextActive]} numberOfLines={1}>
                                 {db.name} ({db.dbName})
                               </Text>
-                              {settings.primary_db === db.dbName && <Ionicons name="checkmark-circle" size={18} color="#4F46E5" />}
+                              {settings.primary_db === db.dbName && <Ionicons name="checkmark-circle" size={18} color={theme.colors.primary} />}
                           </TouchableOpacity>
                       ))}
                   </View>
@@ -552,7 +655,7 @@ export default function SettingsScreen({ navigation }: any) {
       <View style={styles.modernCard}>
           <View style={styles.fieldRow}>
               <View style={styles.fieldIcon}>
-                  <Ionicons name="refresh-outline" size={20} color="#4F46E5" />
+                  <Ionicons name="refresh-outline" size={20} color={theme.colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
                   <Text style={styles.fieldLabel}>Automatic Backups</Text>
@@ -561,7 +664,7 @@ export default function SettingsScreen({ navigation }: any) {
               <Switch 
                   value={!!settings.backup_enabled}
                   onValueChange={toggleAutoBackup}
-                  trackColor={{ false: "#D1D5DB", true: "#4F46E5" }}
+                  trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
                   thumbColor={"#fff"}
               />
           </View>
@@ -571,7 +674,7 @@ export default function SettingsScreen({ navigation }: any) {
                   <View style={styles.separator} />
                   <View style={styles.fieldRow}>
                       <View style={styles.fieldIcon}>
-                          <Ionicons name="calendar-outline" size={20} color="#4F46E5" />
+                          <Ionicons name="calendar-outline" size={20} color={theme.colors.primary} />
                       </View>
                       <View style={{ flex: 1 }}>
                           <Text style={styles.fieldLabel}>Backup Frequency</Text>
@@ -602,7 +705,7 @@ export default function SettingsScreen({ navigation }: any) {
                   <View style={styles.separator} />
                   <View style={styles.fieldRow}>
                       <View style={styles.fieldIcon}>
-                          <Ionicons name="time-outline" size={20} color="#4F46E5" />
+                          <Ionicons name="time-outline" size={20} color={theme.colors.primary} />
                       </View>
                       <View style={{ flex: 1 }}>
                           <Text style={styles.fieldLabel}>Backup Time</Text>
@@ -621,51 +724,51 @@ export default function SettingsScreen({ navigation }: any) {
           <View style={styles.separator} />
 
           <TouchableOpacity onPress={manualBackupNow} style={styles.actionItem}>
-            <View style={[styles.actionIconBox, { backgroundColor: "#E0F2FE" }]}>
-                <Ionicons name="cloud-upload-outline" size={22} color="#0284C7" />
+            <View style={[styles.actionIconBox, { backgroundColor: theme.colors.lighter }]}>
+                <Ionicons name="cloud-upload-outline" size={22} color={theme.colors.primary} />
             </View>
             <View style={{ flex: 1, marginLeft: 15 }}>
                 <Text style={styles.actionTitle}>Run Backup Now</Text>
                 <Text style={styles.actionSubtitle}>Create JSON backups immediately</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.border} />
           </TouchableOpacity>
 
           <TouchableOpacity onPress={importSpreadsheet} style={styles.actionItem}>
-            <View style={[styles.actionIconBox, { backgroundColor: "#ECFDF5" }]}>
-                <Ionicons name="cloud-upload-outline" size={22} color="#10B981" />
+            <View style={[styles.actionIconBox, { backgroundColor: theme.colors.lighter }]}>
+                <Ionicons name="cloud-upload-outline" size={22} color={theme.colors.primary} />
             </View>
             <View style={{ flex: 1, marginLeft: 15 }}>
                 <Text style={styles.actionTitle}>Import Data</Text>
                 <Text style={styles.actionSubtitle}>Support for XLSX, ODS</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.border} />
           </TouchableOpacity>
 
           <View style={styles.separator} />
 
           <TouchableOpacity onPress={exportCsv} style={styles.actionItem}>
-            <View style={[styles.actionIconBox, { backgroundColor: "#EFF6FF" }]}>
-                <Ionicons name="download-outline" size={22} color="#3B82F6" />
+            <View style={[styles.actionIconBox, { backgroundColor: theme.colors.lighter }]}>
+                <Ionicons name="download-outline" size={22} color={theme.colors.primary} />
             </View>
             <View style={{ flex: 1, marginLeft: 15 }}>
                 <Text style={styles.actionTitle}>Export CSV</Text>
                 <Text style={styles.actionSubtitle}>Download expense records</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.border} />
           </TouchableOpacity>
 
           <View style={styles.separator} />
 
           <TouchableOpacity onPress={backup} style={styles.actionItem}>
-            <View style={[styles.actionIconBox, { backgroundColor: "#FFFBEB" }]}>
-                <Ionicons name="server-outline" size={22} color="#F59E0B" />
+            <View style={[styles.actionIconBox, { backgroundColor: theme.colors.lighter }]}>
+                <Ionicons name="server-outline" size={22} color={theme.colors.primary} />
             </View>
             <View style={{ flex: 1, marginLeft: 15 }}>
                 <Text style={styles.actionTitle}>Full Backup</Text>
                 <Text style={styles.actionSubtitle}>Save JSON backup file</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.border} />
           </TouchableOpacity>
       </View>
       
@@ -720,95 +823,99 @@ export default function SettingsScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.colors.background },
+    content: { flex: 1, padding: 20 },
+
     // Modern "2026" Auth Styles
-    authContainer: { flex: 1, backgroundColor: "#111827", position: "relative" },
+    authContainer: { flex: 1, backgroundColor: theme.colors.background, position: "relative" },
     blob: { position: "absolute", width: 300, height: 300, borderRadius: 150 },
     logoContainer: { 
         width: 80, height: 80, borderRadius: 24, 
-        backgroundColor: "rgba(255,255,255,0.1)", 
+        backgroundColor: theme.mode === 'dark' ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)", 
         justifyContent: "center", alignItems: "center", marginBottom: 20,
-        borderWidth: 1, borderColor: "rgba(255,255,255,0.2)"
+        borderWidth: 1, borderColor: theme.mode === 'dark' ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.1)"
     },
-    authTitle: { fontSize: 32, fontWeight: "800", color: "#fff", letterSpacing: 0.5 },
-    authSubtitle: { fontSize: 14, color: "#9CA3AF", marginTop: 8, textAlign: "center", maxWidth: "80%" },
+    authTitle: { fontSize: 32, fontWeight: "800", color: theme.colors.text, letterSpacing: 0.5 },
+    authSubtitle: { fontSize: 14, color: theme.colors.subtext, marginTop: 8, textAlign: "center", maxWidth: "80%" },
     authFormCard: { 
-        width: "100%", backgroundColor: "rgba(31, 41, 55, 0.7)", 
+        width: "100%", backgroundColor: theme.colors.card, 
         borderRadius: 24, padding: 24, 
-        borderWidth: 1, borderColor: "rgba(255,255,255,0.1)",
-        shadowColor: "#000", shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 20
+        borderWidth: 1, borderColor: theme.colors.border,
+        shadowColor: "#000", shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 20
     },
     inputGroup: { 
         flexDirection: "row", alignItems: "center", 
-        backgroundColor: "rgba(17, 24, 39, 0.6)", 
+        backgroundColor: theme.colors.background, 
         borderRadius: 16, marginBottom: 16, paddingHorizontal: 16, height: 56,
-        borderWidth: 1, borderColor: "rgba(75, 85, 99, 0.4)"
+        borderWidth: 1, borderColor: theme.colors.border
     },
     inputIcon: { marginRight: 12 },
-    modernInput: { flex: 1, color: "#fff", fontSize: 16 },
+    modernInput: { flex: 1, color: theme.colors.text, fontSize: 16 },
     gradientButton: { 
-        backgroundColor: "#4F46E5", flexDirection: "row", justifyContent: "center", alignItems: "center",
+        backgroundColor: theme.colors.primary, flexDirection: "row", justifyContent: "center", alignItems: "center",
         height: 56, borderRadius: 16, marginTop: 8,
-        shadowColor: "#4F46E5", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 6
+        shadowColor: theme.colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 6
     },
     gradientButtonText: { color: "#fff", fontWeight: "700", fontSize: 16, marginRight: 8 },
-    switchAuthText: { color: "#D1D5DB", fontSize: 14 },
+    switchAuthText: { color: theme.colors.subtext, fontSize: 14 },
 
     // Settings Screen Styles
-    sectionTitle: { fontSize: 13, fontWeight: "700", color: "#6B7280", marginTop: 24, marginBottom: 12, paddingLeft: 4, letterSpacing: 1 },
+    sectionTitle: { fontSize: 13, fontWeight: "700", color: theme.colors.subtext, marginTop: 24, marginBottom: 12, paddingLeft: 4, letterSpacing: 1 },
     modernCard: { 
-        backgroundColor: "#fff", borderRadius: 20, padding: 20, 
-        shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 
+        backgroundColor: theme.colors.card, borderRadius: 20, padding: 20, 
+        shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
+        borderWidth: 1, borderColor: theme.colors.border
     },
     fieldRow: { flexDirection: "row", alignItems: "center", paddingVertical: 4 },
     fieldIcon: { 
-        width: 36, height: 36, borderRadius: 10, backgroundColor: "#EEF2FF", 
+        width: 36, height: 36, borderRadius: 10, backgroundColor: theme.colors.background, 
         justifyContent: "center", alignItems: "center", marginRight: 16 
     },
-    fieldLabel: { fontSize: 12, color: "#6B7280", fontWeight: "600", marginBottom: 2 },
+    fieldLabel: { fontSize: 12, color: theme.colors.subtext, fontWeight: "600", marginBottom: 2 },
     cleanInput: { 
-        fontSize: 16, color: "#1F2937", fontWeight: "500", paddingVertical: 4, 
+        fontSize: 16, color: theme.colors.text, fontWeight: "500", paddingVertical: 4, 
         borderBottomWidth: 1, borderBottomColor: "transparent" 
     },
-    separator: { height: 1, backgroundColor: "#F3F4F6", marginVertical: 12, marginLeft: 52 },
+    separator: { height: 1, backgroundColor: theme.colors.border, marginVertical: 12, marginLeft: 52 },
     
     uploadButton: { 
-        flexDirection: "row", alignItems: "center", backgroundColor: "#EEF2FF", 
+        flexDirection: "row", alignItems: "center", backgroundColor: theme.colors.background, 
         paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, marginRight: 12 
     },
-    uploadButtonText: { color: "#4F46E5", fontWeight: "600", fontSize: 13, marginLeft: 6 },
-    previewBox: { padding: 4, borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 6, backgroundColor: "#fff" },
+    uploadButtonText: { color: theme.colors.primary, fontWeight: "600", fontSize: 13, marginLeft: 6 },
+    previewBox: { padding: 4, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 6, backgroundColor: theme.colors.card },
     
     sizeOption: { 
         flex: 1, paddingVertical: 10, alignItems: "center", borderRadius: 10, 
-        backgroundColor: "#F3F4F6", marginHorizontal: 4, borderWidth: 1, borderColor: "transparent"
+        backgroundColor: theme.colors.background, marginHorizontal: 4, borderWidth: 1, borderColor: "transparent"
     },
-    sizeOptionActive: { backgroundColor: "#fff", borderColor: "#4F46E5", shadowColor: "#4F46E5", shadowOpacity: 0.1, shadowRadius: 4, elevation: 1 },
-    sizeOptionText: { color: "#6B7280", fontWeight: "600" },
-    sizeOptionTextActive: { color: "#4F46E5" },
+    sizeOptionActive: { backgroundColor: theme.colors.card, borderColor: theme.colors.primary, shadowColor: theme.colors.primary, shadowOpacity: 0.1, shadowRadius: 4, elevation: 1, borderWidth: 1 },
+    sizeOptionText: { color: theme.colors.subtext, fontWeight: "600" },
+    sizeOptionTextActive: { color: theme.colors.primary },
 
     saveButton: { 
-        backgroundColor: "#111827", borderRadius: 12, paddingVertical: 14, alignItems: "center", marginTop: 24,
+        backgroundColor: theme.colors.text, borderRadius: 12, paddingVertical: 14, alignItems: "center", marginTop: 24,
         shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 5, elevation: 2
     },
-    saveButtonText: { color: "#fff", fontWeight: "600", fontSize: 15 },
+    saveButtonText: { color: theme.colors.background, fontWeight: "600", fontSize: 15 },
 
-    smallActionButton: { backgroundColor: "#F59E0B", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
+    smallActionButton: { backgroundColor: theme.colors.primary, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
     smallActionText: { color: "#fff", fontSize: 12, fontWeight: "700" },
 
     actionItem: { flexDirection: "row", alignItems: "center", paddingVertical: 8 },
     actionIconBox: { width: 44, height: 44, borderRadius: 12, justifyContent: "center", alignItems: "center" },
-    actionTitle: { fontSize: 16, fontWeight: "600", color: "#1F2937" },
-    actionSubtitle: { fontSize: 12, color: "#9CA3AF", marginTop: 1 },
+    actionTitle: { fontSize: 16, fontWeight: "600", color: theme.colors.text },
+    actionSubtitle: { fontSize: 12, color: theme.colors.subtext, marginTop: 1 },
 
     dbOption: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
         paddingVertical: 10, paddingHorizontal: 12, borderRadius: 8,
-        backgroundColor: '#F9FAFB', marginBottom: 8, borderWidth: 1, borderColor: 'transparent'
+        backgroundColor: theme.colors.background, marginBottom: 8, borderWidth: 1, borderColor: 'transparent'
     },
     dbOptionActive: {
-        backgroundColor: '#EEF2FF', borderColor: '#4F46E5'
+        backgroundColor: theme.colors.card, borderColor: theme.colors.primary
     },
-    dbOptionText: { fontSize: 14, color: '#4B5563', fontWeight: '500', flex: 1 },
-    dbOptionTextActive: { color: '#4F46E5', fontWeight: '700' },
+    dbOptionText: { fontSize: 14, color: theme.colors.subtext, fontWeight: '500', flex: 1 },
+    dbOptionTextActive: { color: theme.colors.primary, fontWeight: '700' },
 });

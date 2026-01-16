@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext, useMemo } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Alert, StyleSheet, Platform, ActivityIndicator, Modal, ScrollView } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
 import * as FileSystem from 'expo-file-system';
@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Store } from '../data/Store';
 import { AppHeader } from '../components/AppHeader';
 import { InputModal } from '../components/InputModal';
+import { UIContext } from '../context/UIContext';
 
 const BACKUP_LOG_FILE = FileSystem.documentDirectory + "backup_log.json";
 
@@ -21,6 +22,8 @@ interface BackupLog {
 }
 
 export default function BackupScreen() {
+    const { theme } = useContext(UIContext);
+    const styles = useMemo(() => getStyles(theme), [theme]);
     const [backups, setBackups] = useState<BackupLog[]>([]);
     const [loading, setLoading] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
@@ -144,7 +147,7 @@ export default function BackupScreen() {
             <View style={styles.card}>
                 <View style={styles.cardHeader}>
                     <View style={styles.iconBg}>
-                        <Ionicons name="save-outline" size={24} color="#4F46E5" />
+                        <Ionicons name="save-outline" size={24} color={theme.colors.primary} />
                     </View>
                     <View style={{ flex: 1, marginLeft: 12 }}>
                         <Text style={styles.cardTitle}>{item.name}</Text>
@@ -159,16 +162,16 @@ export default function BackupScreen() {
                 
                 <View style={styles.actions}>
                     <TouchableOpacity style={styles.actionBtn} onPress={() => restoreBackup(item)}>
-                        <Ionicons name="cloud-upload-outline" size={18} color="#059669" />
-                        <Text style={[styles.actionText, { color: '#059669' }]}>Restore</Text>
+                        <Ionicons name="cloud-upload-outline" size={18} color={theme.colors.success || "#059669"} />
+                        <Text style={[styles.actionText, { color: theme.colors.success || '#059669' }]}>Restore</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.actionBtn} onPress={() => shareBackup(item)}>
-                        <Ionicons name="share-social-outline" size={18} color="#4F46E5" />
-                        <Text style={[styles.actionText, { color: '#4F46E5' }]}>Export</Text>
+                        <Ionicons name="share-social-outline" size={18} color={theme.colors.primary} />
+                        <Text style={[styles.actionText, { color: theme.colors.primary }]}>Export</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.actionBtn} onPress={() => deleteBackup(item.id)}>
-                        <Ionicons name="trash-outline" size={18} color="#DC2626" />
-                        <Text style={[styles.actionText, { color: '#DC2626' }]}>Delete</Text>
+                        <Ionicons name="trash-outline" size={18} color={theme.colors.danger || "#DC2626"} />
+                        <Text style={[styles.actionText, { color: theme.colors.danger || '#DC2626' }]}>Delete</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -186,7 +189,7 @@ export default function BackupScreen() {
                 </TouchableOpacity>
 
                 {loading ? (
-                    <ActivityIndicator size="large" color="#4F46E5" style={{ marginTop: 20 }} />
+                    <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginTop: 20 }} />
                 ) : (
                     <FlatList
                         data={backups}
@@ -196,7 +199,7 @@ export default function BackupScreen() {
                         contentContainerStyle={{ paddingBottom: 100 }}
                         ListEmptyComponent={
                             <View style={styles.emptyState}>
-                                <Ionicons name="file-tray-outline" size={48} color="#ccc" />
+                                <Ionicons name="file-tray-outline" size={48} color={theme.colors.placeholder} />
                                 <Text style={styles.emptyText}>No backups found</Text>
                             </View>
                         }
@@ -232,7 +235,7 @@ export default function BackupScreen() {
                                     onPress={() => setTargetDb('tsl_expenses.db')}
                                 >
                                     <Text style={[styles.optionText, targetDb === 'tsl_expenses.db' && styles.optionTextSelected]}>Default (tsl_expenses.db)</Text>
-                                    {targetDb === 'tsl_expenses.db' && <Ionicons name="checkmark" size={16} color="#4F46E5" />}
+                                    {targetDb === 'tsl_expenses.db' && <Ionicons name="checkmark" size={16} color={theme.colors.primary} />}
                                 </TouchableOpacity>
                                 {availableDbs.filter(d => d.dbName !== 'tsl_expenses.db').map(db => (
                                     <TouchableOpacity 
@@ -241,7 +244,7 @@ export default function BackupScreen() {
                                         onPress={() => setTargetDb(db.dbName)}
                                     >
                                         <Text style={[styles.optionText, targetDb === db.dbName && styles.optionTextSelected]}>{db.name} ({db.dbName})</Text>
-                                        {targetDb === db.dbName && <Ionicons name="checkmark" size={16} color="#4F46E5" />}
+                                        {targetDb === db.dbName && <Ionicons name="checkmark" size={16} color={theme.colors.primary} />}
                                     </TouchableOpacity>
                                 ))}
                             </ScrollView>
@@ -278,24 +281,24 @@ export default function BackupScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F3F4F6',
+        backgroundColor: theme.colors.background,
     },
     content: {
         flex: 1,
         padding: 16,
     },
     createBtn: {
-        backgroundColor: '#4F46E5',
+        backgroundColor: theme.colors.primary,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         padding: 16,
         borderRadius: 12,
         marginBottom: 20,
-        shadowColor: "#4F46E5",
+        shadowColor: theme.colors.primary,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
@@ -308,7 +311,7 @@ const styles = StyleSheet.create({
         marginLeft: 8,
     },
     card: {
-        backgroundColor: 'white',
+        backgroundColor: theme.colors.card,
         borderRadius: 16,
         padding: 16,
         marginBottom: 12,
@@ -326,22 +329,22 @@ const styles = StyleSheet.create({
         width: 48,
         height: 48,
         borderRadius: 12,
-        backgroundColor: '#EEF2FF',
+        backgroundColor: theme.mode === 'dark' ? 'rgba(255,255,255,0.1)' : '#EEF2FF',
         alignItems: 'center',
         justifyContent: 'center',
     },
     cardTitle: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: '#1F2937',
+        color: theme.colors.text,
     },
     cardSubtitle: {
         fontSize: 12,
-        color: '#6B7280',
+        color: theme.colors.subtext,
         marginTop: 2,
     },
     badge: {
-        backgroundColor: '#F3F4F6',
+        backgroundColor: theme.colors.background,
         paddingHorizontal: 8,
         paddingVertical: 4,
         borderRadius: 8,
@@ -349,11 +352,11 @@ const styles = StyleSheet.create({
     badgeText: {
         fontSize: 10,
         fontWeight: '600',
-        color: '#4B5563',
+        color: theme.colors.subtext,
     },
     divider: {
         height: 1,
-        backgroundColor: '#F3F4F6',
+        backgroundColor: theme.colors.border,
         marginVertical: 12,
     },
     actions: {
@@ -376,40 +379,40 @@ const styles = StyleSheet.create({
         marginTop: 50,
     },
     emptyText: {
-        color: '#9CA3AF',
+        color: theme.colors.subtext,
         marginTop: 10,
     },
     modalOverlay: {
         flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20
     },
     modalContent: {
-        backgroundColor: 'white', borderRadius: 20, padding: 20,
+        backgroundColor: theme.colors.card, borderRadius: 20, padding: 20,
         shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 5
     },
-    modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#1F2937', marginBottom: 4, textAlign: 'center' },
-    modalSubtitle: { fontSize: 14, color: '#6B7280', textAlign: 'center', marginBottom: 20 },
-    label: { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 8, marginTop: 4 },
-    scrollList: { maxHeight: 150, marginBottom: 16, borderWidth: 1, borderColor: '#F3F4F6', borderRadius: 8 },
+    modalTitle: { fontSize: 20, fontWeight: 'bold', color: theme.colors.text, marginBottom: 4, textAlign: 'center' },
+    modalSubtitle: { fontSize: 14, color: theme.colors.subtext, textAlign: 'center', marginBottom: 20 },
+    label: { fontSize: 13, fontWeight: '600', color: theme.colors.text, marginBottom: 8, marginTop: 4 },
+    scrollList: { maxHeight: 150, marginBottom: 16, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8 },
     option: {
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-        padding: 12, borderBottomWidth: 1, borderBottomColor: '#F3F4F6', backgroundColor: '#fff'
+        padding: 12, borderBottomWidth: 1, borderBottomColor: theme.colors.border, backgroundColor: theme.colors.card
     },
-    optionSelected: { backgroundColor: '#EEF2FF' },
-    optionText: { fontSize: 14, color: '#4B5563' },
-    optionTextSelected: { color: '#4F46E5', fontWeight: '600' },
+    optionSelected: { backgroundColor: theme.mode === 'dark' ? 'rgba(255,255,255,0.1)' : '#EEF2FF' },
+    optionText: { fontSize: 14, color: theme.colors.subtext },
+    optionTextSelected: { color: theme.colors.primary, fontWeight: '600' },
     row: { flexDirection: 'row', marginBottom: 20 },
     chip: {
-        flex: 1, padding: 10, borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8,
-        alignItems: 'center', marginHorizontal: 4, backgroundColor: '#F9FAFB'
+        flex: 1, padding: 10, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8,
+        alignItems: 'center', marginHorizontal: 4, backgroundColor: theme.colors.background
     },
-    chipSelected: { backgroundColor: '#EEF2FF', borderColor: '#4F46E5' },
-    chipText: { fontSize: 13, color: '#6B7280', fontWeight: '500' },
-    chipTextSelected: { color: '#4F46E5', fontWeight: '600' },
+    chipSelected: { backgroundColor: theme.mode === 'dark' ? 'rgba(255,255,255,0.1)' : '#EEF2FF', borderColor: theme.colors.primary },
+    chipText: { fontSize: 13, color: theme.colors.subtext, fontWeight: '500' },
+    chipTextSelected: { color: theme.colors.primary, fontWeight: '600' },
     modalActions: { flexDirection: 'row', marginTop: 10 },
     cancelBtn: { flex: 1, padding: 14, alignItems: 'center', marginRight: 8 },
-    cancelBtnText: { color: '#6B7280', fontWeight: '600' },
+    cancelBtnText: { color: theme.colors.subtext, fontWeight: '600' },
     submitBtn: {
-        flex: 1, padding: 14, alignItems: 'center', backgroundColor: '#4F46E5',
+        flex: 1, padding: 14, alignItems: 'center', backgroundColor: theme.colors.primary,
         borderRadius: 12, marginLeft: 8
     },
     submitBtnText: { color: 'white', fontWeight: '600' },

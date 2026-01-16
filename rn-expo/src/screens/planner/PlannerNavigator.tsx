@@ -1,6 +1,6 @@
-import React from 'react';
-import { View, useWindowDimensions } from 'react-native';
-import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
+import React, { useContext, useEffect, useState } from 'react';
+import { TouchableOpacity, View, useWindowDimensions, Text } from 'react-native';
+import { createMaterialTopTabNavigator, MaterialTopTabBar } from '@react-navigation/material-top-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { Store } from '../../data/Store';
 import HomeScreen from '../HomeScreen';
@@ -9,26 +9,119 @@ import { BudgetsScreen } from './BudgetsScreen';
 import { TodosScreen } from './TodosScreen';
 import { NotesScreen } from './NotesScreen';
 import { InvoicesScreen } from './InvoicesScreen';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
+import { UIContext } from '../../context/UIContext';
 
 const Tab = createMaterialTopTabNavigator();
+
+function PlannerTabBar(props: any) {
+    const insets = useSafeAreaInsets();
+    const { navbarStyle, state, descriptors, navigation } = props;
+    const { theme } = useContext(UIContext);
+
+    if (navbarStyle === 'glass') {
+        return (
+            <View style={{
+                position: 'absolute',
+                bottom: 25,
+                left: 20,
+                right: 20,
+                height: 70,
+                borderRadius: 35,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 10 },
+                shadowOpacity: 0.25,
+                shadowRadius: 10,
+                elevation: 5,
+            }}>
+                <View style={{
+                    position: 'absolute',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    borderRadius: 35,
+                    overflow: 'hidden',
+                }}>
+                    <BlurView
+                        intensity={90}
+                        tint={theme.mode === 'dark' ? 'dark' : 'light'}
+                        style={{ flex: 1 }}
+                    />
+                    <View style={{
+                        position: 'absolute', top: 0, bottom: 0, left: 0, right: 0,
+                        backgroundColor: theme.mode === 'dark' ? 'rgba(30,30,30,0.5)' : 'rgba(255,255,255,0.4)'
+                    }} />
+                </View>
+
+                <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    height: '100%',
+                    paddingHorizontal: 10,
+                }}>
+                    {state.routes.map((route: any, index: number) => {
+                        const { options } = descriptors[route.key];
+                        const isFocused = state.index === index;
+                        const onPress = () => {
+                            const event = navigation.emit({
+                                type: 'tabPress',
+                                target: route.key,
+                                canPreventDefault: true,
+                            });
+                            if (!isFocused && !event.defaultPrevented) {
+                                navigation.navigate(route.name);
+                            }
+                        };
+                        const color = isFocused ? theme.colors.primary : (theme.mode === 'dark' ? '#9CA3AF' : '#6B7280');
+                        const icon = options.tabBarIcon ? options.tabBarIcon({ focused: isFocused, color, size: 24 }) : null;
+                        const label = route.name;
+
+                        return (
+                            <TouchableOpacity
+                                key={route.key}
+                                onPress={onPress}
+                                style={{ flex: 1, alignItems: 'center', justifyContent: 'center', height: '100%' }}
+                            >
+                                {icon}
+                                <Text style={{ fontSize: 10, color, marginTop: 4, fontWeight: isFocused ? '600' : '400' }}>{label}</Text>
+                            </TouchableOpacity>
+                        );
+                    })}
+                </View>
+            </View>
+        );
+    }
+    
+    return <MaterialTopTabBar {...props} />;
+}
 
 export const PlannerNavigator = () => {
     const { width } = useWindowDimensions();
     const labelFontSize = width < 360 ? 10 : 12;
+    const [navbarStyle, setNavbarStyle] = useState(Store.settings.navbar_style || 'classic');
+    const { theme } = useContext(UIContext);
+
+    useEffect(() => {
+        const unsub = Store.subscribe(() => {
+             setNavbarStyle(Store.settings.navbar_style || 'classic');
+        });
+        return unsub;
+    }, []);
 
     return (
         <Tab.Navigator
             tabBarPosition="bottom"
+            tabBar={props => <PlannerTabBar {...props} navbarStyle={navbarStyle} />}
             screenOptions={{
                 tabBarShowLabel: true,
-                tabBarScrollEnabled: true,
+                tabBarScrollEnabled: false,
                 tabBarIndicatorStyle: {
-                    backgroundColor: '#4F46E5',
+                    backgroundColor: theme.colors.primary,
                     height: 3,
                     borderRadius: 999,
                 },
                 tabBarStyle: {
-                    backgroundColor: '#ffffff',
+                    backgroundColor: theme.colors.card,
                     elevation: 4,
                     shadowColor: '#000',
                     shadowOffset: { width: 0, height: 2 },
@@ -42,9 +135,9 @@ export const PlannerNavigator = () => {
                     textTransform: 'none',
                     letterSpacing: 0.4,
                 },
-                tabBarActiveTintColor: '#111827',
-                tabBarInactiveTintColor: '#9CA3AF',
-                tabBarPressColor: '#E5E7EB',
+                tabBarActiveTintColor: theme.colors.primary,
+                tabBarInactiveTintColor: theme.colors.subtext,
+                tabBarPressColor: theme.mode === 'dark' ? '#374151' : '#E5E7EB',
             }}
         >
             <Tab.Screen 

@@ -1,13 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext, useMemo } from 'react';
 import { View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet, Alert, Modal, ScrollView, Image, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Store, Note } from '../../data/Store';
+import { UIContext } from '../../context/UIContext';
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
 
 const { width } = Dimensions.get('window');
 
 export const NotesScreen = () => {
+    const { theme } = useContext(UIContext);
+    const styles = useMemo(() => getStyles(theme), [theme]);
     const [notes, setNotes] = useState<Note[]>([]);
     const [modalVisible, setModalVisible] = useState(false);
     const [currentNote, setCurrentNote] = useState<Partial<Note>>({});
@@ -95,9 +98,9 @@ export const NotesScreen = () => {
                 <Text style={styles.title}>Notes</Text>
                 <View style={styles.headerActions}>
                     <TouchableOpacity onPress={() => Store.setAppMode('finance')} style={styles.toggleButton}>
-                        <Ionicons name="swap-horizontal" size={20} color="#4F46E5" />
+                        <Ionicons name="swap-horizontal" size={20} color={theme.colors.primary} />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={createNote} style={styles.addButton}>
+                    <TouchableOpacity onPress={createNote} style={[styles.addButton, { backgroundColor: theme.colors.primary, shadowColor: theme.colors.primary }]}>
                         <Ionicons name="add" size={24} color="#fff" />
                     </TouchableOpacity>
                 </View>
@@ -124,7 +127,7 @@ export const NotesScreen = () => {
                                 <Ionicons name={currentNote.is_important ? "star" : "star-outline"} size={24} color="#F59E0B" />
                             </TouchableOpacity>
                             <TouchableOpacity onPress={handleSave}>
-                                <Text style={styles.saveText}>Save</Text>
+                                <Text style={[styles.saveText, { color: theme.colors.primary }]}>Save</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -150,8 +153,8 @@ export const NotesScreen = () => {
 
                         <View style={styles.toolbar}>
                             <TouchableOpacity onPress={pickImage} style={styles.toolButton}>
-                                <Ionicons name="image-outline" size={24} color="#4F46E5" />
-                                <Text style={styles.toolText}>Add Image</Text>
+                                <Ionicons name="image-outline" size={24} color={theme.colors.primary} />
+                                <Text style={[styles.toolText, { color: theme.colors.primary }]}>Add Image</Text>
                             </TouchableOpacity>
                         </View>
 
@@ -178,10 +181,10 @@ export const NotesScreen = () => {
     );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F3F4F6',
+        backgroundColor: theme.colors.background,
     },
     header: {
         flexDirection: 'row',
@@ -189,9 +192,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         padding: 16,
         paddingTop: 20,
-        backgroundColor: '#fff',
+        backgroundColor: theme.colors.card,
         borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
+        borderBottomColor: theme.colors.border,
     },
     headerActions: {
         flexDirection: 'row',
@@ -200,14 +203,14 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 28,
         fontWeight: '800',
-        color: '#111827',
+        color: theme.colors.text,
         letterSpacing: -0.5,
     },
     addButton: {
-        backgroundColor: '#4F46E5',
+        backgroundColor: theme.colors.primary,
         padding: 10,
         borderRadius: 20,
-        shadowColor: "#4F46E5",
+        shadowColor: theme.colors.primary,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
@@ -215,12 +218,12 @@ const styles = StyleSheet.create({
     },
     toggleButton: {
         marginRight: 8,
-        backgroundColor: '#EEF2FF',
+        backgroundColor: theme.mode === 'dark' ? theme.colors.input : '#EEF2FF',
         padding: 8,
         borderRadius: 999,
     },
     card: {
-        backgroundColor: '#fff',
+        backgroundColor: theme.colors.card,
         width: '48%',
         borderRadius: 16,
         marginBottom: 16,
@@ -230,11 +233,11 @@ const styles = StyleSheet.create({
         shadowRadius: 8,
         elevation: 3,
         borderWidth: 1,
-        borderColor: '#F3F4F6',
+        borderColor: theme.colors.border,
         overflow: 'hidden',
     },
     cardImportant: {
-        borderColor: '#FCD34D',
+        borderColor: theme.colors.warning,
         borderWidth: 1.5,
     },
     cardImage: {
@@ -249,11 +252,11 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '700',
         marginBottom: 4,
-        color: '#1F2937',
+        color: theme.colors.text,
     },
     cardPreview: {
         fontSize: 13,
-        color: '#6B7280',
+        color: theme.colors.subtext,
         marginBottom: 8,
         lineHeight: 18,
     },
@@ -265,17 +268,17 @@ const styles = StyleSheet.create({
     },
     cardDate: {
         fontSize: 11,
-        color: '#9CA3AF',
+        color: theme.colors.subtext,
     },
     emptyText: {
         textAlign: 'center',
-        color: '#9CA3AF',
+        color: theme.colors.subtext,
         marginTop: 60,
         fontSize: 16,
     },
     modalContainer: {
         flex: 1,
-        backgroundColor: '#fff',
+        backgroundColor: theme.colors.card,
     },
     modalHeader: {
         flexDirection: 'row',
@@ -283,7 +286,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         padding: 16,
         borderBottomWidth: 1,
-        borderBottomColor: '#F3F4F6',
+        borderBottomColor: theme.colors.border,
     },
     headerctions: {
         flexDirection: 'row',
@@ -291,12 +294,12 @@ const styles = StyleSheet.create({
     },
     cancelText: {
         fontSize: 16,
-        color: '#EF4444',
+        color: theme.colors.danger,
     },
     saveText: {
         fontSize: 16,
         fontWeight: '700',
-        color: '#4F46E5',
+        color: theme.colors.primary,
     },
     modalContent: {
         flex: 1,
@@ -306,12 +309,12 @@ const styles = StyleSheet.create({
         fontSize: 24,
         fontWeight: '800',
         marginBottom: 20,
-        color: '#111827',
+        color: theme.colors.text,
     },
     inputContent: {
         fontSize: 17,
         lineHeight: 26,
-        color: '#374151',
+        color: theme.colors.text,
         minHeight: 200,
     },
     toolbar: {
@@ -319,19 +322,19 @@ const styles = StyleSheet.create({
         marginBottom: 20,
         paddingBottom: 15,
         borderBottomWidth: 1,
-        borderBottomColor: '#F3F4F6',
+        borderBottomColor: theme.colors.border,
     },
     toolButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#EEF2FF',
+        backgroundColor: theme.mode === 'dark' ? theme.colors.surface : '#EEF2FF',
         paddingVertical: 8,
         paddingHorizontal: 12,
         borderRadius: 8,
     },
     toolText: {
         marginLeft: 8,
-        color: '#4F46E5',
+        color: theme.colors.primary,
         fontWeight: '600',
     },
     imageContainer: {
@@ -355,13 +358,13 @@ const styles = StyleSheet.create({
     },
     deleteButton: {
         margin: 20,
-        backgroundColor: '#FEF2F2',
+        backgroundColor: theme.mode === 'dark' ? 'rgba(239, 68, 68, 0.2)' : '#FEF2F2',
         padding: 16,
         borderRadius: 16,
         alignItems: 'center',
     },
     deleteText: {
-        color: '#EF4444',
+        color: theme.colors.danger,
         fontWeight: '700',
         fontSize: 16,
     }

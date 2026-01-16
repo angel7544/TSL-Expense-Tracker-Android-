@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext, useMemo } from 'react';
 import { View, Text, Button, Alert, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
@@ -7,8 +7,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { Store, ExpenseRecord } from '../data/Store';
 import { AppHeader } from "../components/AppHeader";
 import { InputModal } from '../components/InputModal';
+import { UIContext } from '../context/UIContext';
+import { getTheme } from '../constants/Theme';
 
 export default function ReportScreen() {
+  const { theme } = useContext(UIContext);
+  const styles = useMemo(() => getStyles(theme), [theme]);
+
   const [records, setRecords] = useState<ExpenseRecord[]>([]);
   const [summary, setSummary] = useState({ inc: 0, exp: 0, net: 0 });
   const [modalVisible, setModalVisible] = useState(false);
@@ -190,7 +195,7 @@ export default function ReportScreen() {
       <View style={styles.header}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <View>
-                <Text style={styles.title}>Expense Analysis Report</Text>
+                <Text style={styles.title}>Expense Analysis</Text>
                 <Text style={styles.subtitle}>Date: {new Date().toLocaleDateString()}</Text>
             </View>
             <TouchableOpacity style={styles.miniButton} onPress={() => setModalVisible(true)}>
@@ -213,15 +218,15 @@ export default function ReportScreen() {
       <View style={styles.summaryContainer}>
         <View style={styles.summaryItem}>
           <Text style={styles.summaryLabel}>Total Income</Text>
-          <Text style={[styles.summaryValue, { color: '#28a745' }]}>₹{summary.inc.toFixed(2)}</Text>
+          <Text style={[styles.summaryValue, { color: theme.colors.success }]}>₹{summary.inc.toFixed(2)}</Text>
         </View>
         <View style={styles.summaryItem}>
           <Text style={styles.summaryLabel}>Total Expense</Text>
-          <Text style={[styles.summaryValue, { color: '#dc3545' }]}>₹{summary.exp.toFixed(2)}</Text>
+          <Text style={[styles.summaryValue, { color: theme.colors.danger }]}>₹{summary.exp.toFixed(2)}</Text>
         </View>
         <View style={styles.summaryItem}>
           <Text style={styles.summaryLabel}>Net Balance</Text>
-          <Text style={[styles.summaryValue, { color: summary.net >= 0 ? '#17a2b8' : '#ffc107' }]}>
+          <Text style={[styles.summaryValue, { color: summary.net >= 0 ? theme.colors.primary : theme.colors.danger }]}>
             ₹{summary.net.toFixed(2)}
           </Text>
         </View>
@@ -245,8 +250,8 @@ export default function ReportScreen() {
             </View>
             <Text style={[styles.col, { flex: 1, fontSize: 12 }]}>{item.expense_category}</Text>
             <View style={{ flex: 1, alignItems: 'flex-end' }}>
-              {item.income_amount > 0 && <Text style={{ color: '#28a745', fontWeight: 'bold' }}>+{item.income_amount.toFixed(2)}</Text>}
-              {item.expense_amount > 0 && <Text style={{ color: '#dc3545', fontWeight: 'bold' }}>-{item.expense_amount.toFixed(2)}</Text>}
+              {item.income_amount > 0 && <Text style={{ color: theme.colors.success, fontWeight: 'bold' }}>+{item.income_amount.toFixed(2)}</Text>}
+              {item.expense_amount > 0 && <Text style={{ color: theme.colors.danger, fontWeight: 'bold' }}>-{item.expense_amount.toFixed(2)}</Text>}
             </View>
           </View>
         ))}
@@ -263,24 +268,23 @@ export default function ReportScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8f9fa' },
-  header: { marginBottom: 16, borderBottomWidth: 1, borderColor: '#eee', paddingBottom: 10 },
-  title: { fontSize: 22, fontWeight: 'bold', color: '#333' },
-  subtitle: { fontSize: 14, color: '#666', marginTop: 4 },
-  summaryContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20, backgroundColor: '#fff', padding: 16, borderRadius: 10, elevation: 2 },
+const getStyles = (theme: any) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.colors.background },
+  header: { marginBottom: 16, borderBottomWidth: 1, borderColor: theme.colors.border, paddingBottom: 10 },
+  title: { fontSize: 22, fontWeight: 'bold', color: theme.colors.text },
+  subtitle: { fontSize: 14, color: theme.colors.subtext, marginTop: 4 },
+  summaryContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20, backgroundColor: theme.colors.card, padding: 16, borderRadius: 10, elevation: 2 },
   summaryItem: { alignItems: 'center' },
-  summaryLabel: { fontSize: 12, color: '#666', marginBottom: 4 },
+  summaryLabel: { fontSize: 12, color: theme.colors.subtext, marginBottom: 4 },
   summaryValue: { fontSize: 16, fontWeight: 'bold' },
-  list: { flex: 1, backgroundColor: '#fff', borderRadius: 10, padding: 10, marginBottom: 80 },
-  tableHeader: { flexDirection: 'row', borderBottomWidth: 1, borderColor: '#eee', paddingBottom: 8, marginBottom: 8 },
-  col: { fontWeight: '600', color: '#555' },
-  row: { flexDirection: 'row', paddingVertical: 8, borderBottomWidth: 1, borderColor: '#f0f0f0', alignItems: 'center' },
-  date: { fontSize: 10, color: '#999' },
-  desc: { fontSize: 13, color: '#333' },
-  // footer: { position: 'absolute', bottom: 20, left: 16, right: 16 },
+  list: { flex: 1, backgroundColor: theme.colors.card, borderRadius: 10, padding: 10, marginBottom: 80 },
+  tableHeader: { flexDirection: 'row', borderBottomWidth: 1, borderColor: theme.colors.border, paddingBottom: 8, marginBottom: 8 },
+  col: { fontWeight: '600', color: theme.colors.text },
+  row: { flexDirection: 'row', paddingVertical: 8, borderBottomWidth: 1, borderColor: theme.colors.border, alignItems: 'center' },
+  date: { fontSize: 10, color: theme.colors.subtext },
+  desc: { fontSize: 13, color: theme.colors.text },
   miniButton: { 
-    backgroundColor: '#007bff', 
+    backgroundColor: theme.colors.primary, 
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8, 
@@ -290,7 +294,7 @@ const styles = StyleSheet.create({
   },
   miniButtonText: { color: '#fff', fontSize: 14, fontWeight: 'bold', marginLeft: 4 },
   button: {
-    backgroundColor: '#007bff',
+    backgroundColor: theme.colors.primary,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,

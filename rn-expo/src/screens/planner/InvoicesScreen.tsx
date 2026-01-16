@@ -1,13 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext, useMemo } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Modal, TextInput, Alert, ScrollView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { Store, Invoice, InvoiceItem, ExpenseRecord } from '../../data/Store';
+import { UIContext } from '../../context/UIContext';
 
 // --- Simple Calendar Modal ---
 const CalendarModal = ({ visible, onClose, onSelect, initialDate }: { visible: boolean, onClose: () => void, onSelect: (date: string) => void, initialDate?: string }) => {
+    const { theme } = useContext(UIContext);
+    const styles = useMemo(() => getStyles(theme), [theme]);
     const [currentDate, setCurrentDate] = useState(initialDate ? new Date(initialDate) : new Date());
     
     useEffect(() => {
@@ -62,9 +65,9 @@ const CalendarModal = ({ visible, onClose, onSelect, initialDate }: { visible: b
             <View style={styles.modalOverlay}>
                 <View style={styles.calendarContainer}>
                     <View style={styles.calendarHeader}>
-                        <TouchableOpacity onPress={() => changeMonth(-1)}><Ionicons name="chevron-back" size={24} color="#333" /></TouchableOpacity>
+                        <TouchableOpacity onPress={() => changeMonth(-1)}><Ionicons name="chevron-back" size={24} color={theme.colors.text} /></TouchableOpacity>
                         <Text style={styles.calendarTitle}>{monthNames[month]} {year}</Text>
-                        <TouchableOpacity onPress={() => changeMonth(1)}><Ionicons name="chevron-forward" size={24} color="#333" /></TouchableOpacity>
+                        <TouchableOpacity onPress={() => changeMonth(1)}><Ionicons name="chevron-forward" size={24} color={theme.colors.text} /></TouchableOpacity>
                     </View>
                     <View style={styles.weekDays}>
                         {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => <Text key={i} style={styles.weekDayText}>{d}</Text>)}
@@ -82,6 +85,8 @@ const CalendarModal = ({ visible, onClose, onSelect, initialDate }: { visible: b
 };
 
 export const InvoicesScreen = () => {
+    const { theme } = useContext(UIContext);
+    const styles = useMemo(() => getStyles(theme), [theme]);
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [modalVisible, setModalVisible] = useState(false);
     const [currentInvoice, setCurrentInvoice] = useState<Partial<Invoice>>({});
@@ -391,13 +396,13 @@ export const InvoicesScreen = () => {
             
             <View style={styles.cardActions}>
                 <TouchableOpacity onPress={() => openModal(item)} style={styles.actionBtn}>
-                    <Ionicons name="create-outline" size={20} color="#4b5563" />
+                    <Ionicons name="create-outline" size={20} color={theme.colors.subtext} />
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => generatePdf(item)} style={styles.actionBtn}>
-                    <Ionicons name="share-outline" size={20} color="#047857" />
+                    <Ionicons name="share-outline" size={20} color={theme.colors.primary} />
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => handleDelete(item.id!)} style={styles.actionBtn}>
-                    <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                    <Ionicons name="trash-outline" size={20} color={theme.colors.danger} />
                 </TouchableOpacity>
             </View>
         </View>
@@ -407,6 +412,18 @@ export const InvoicesScreen = () => {
 
     return (
         <View style={styles.container}>
+            <View style={styles.header}>
+                <Text style={styles.title}>Invoices</Text>
+                <View style={styles.headerActions}>
+                    <TouchableOpacity onPress={() => Store.setAppMode('finance')} style={styles.toggleButton}>
+                        <Ionicons name="swap-horizontal" size={20} color={theme.colors.primary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.addButton, { backgroundColor: theme.colors.primary, shadowColor: theme.colors.primary }]} onPress={() => openModal()}>
+                        <Ionicons name="add" size={24} color="#fff" />
+                    </TouchableOpacity>
+                </View>
+            </View>
+
             <FlatList
                 data={invoices}
                 renderItem={renderInvoiceItem}
@@ -414,17 +431,13 @@ export const InvoicesScreen = () => {
                 contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
                 ListEmptyComponent={<Text style={styles.emptyText}>No invoices yet. Create one!</Text>}
             />
-            
-            <TouchableOpacity style={styles.fab} onPress={() => openModal()}>
-                <Ionicons name="add" size={24} color="#fff" />
-            </TouchableOpacity>
 
             <Modal visible={modalVisible} animationType="slide" onRequestClose={() => setModalVisible(false)}>
                 <View style={styles.modalContainer}>
                     <View style={styles.modalHeader}>
                         <Text style={styles.modalTitle}>{currentInvoice.id ? 'Edit Invoice' : 'New Invoice'}</Text>
                         <TouchableOpacity onPress={() => setModalVisible(false)}>
-                            <Ionicons name="close" size={24} color="#333" />
+                            <Ionicons name="close" size={24} color={theme.colors.text} />
                         </TouchableOpacity>
                     </View>
                     
@@ -433,17 +446,18 @@ export const InvoicesScreen = () => {
                         <TextInput 
                             style={styles.input} 
                             placeholder="Invoice Number (e.g. INV-001)"
+                            placeholderTextColor={theme.colors.subtext}
                             value={currentInvoice.invoice_number}
                             onChangeText={t => setCurrentInvoice({...currentInvoice, invoice_number: t})}
                         />
                         <View style={styles.row}>
                             <TouchableOpacity style={[styles.input, { flex: 1, marginRight: 8 }]} onPress={() => setShowCalendar('invoice')}>
-                                <Text style={{ color: currentInvoice.invoice_date ? '#000' : '#999' }}>
+                                <Text style={{ color: currentInvoice.invoice_date ? theme.colors.text : theme.colors.subtext }}>
                                     {currentInvoice.invoice_date || "Invoice Date"}
                                 </Text>
                             </TouchableOpacity>
                             <TouchableOpacity style={[styles.input, { flex: 1 }]} onPress={() => setShowCalendar('due')}>
-                                <Text style={{ color: currentInvoice.due_date ? '#000' : '#999' }}>
+                                <Text style={{ color: currentInvoice.due_date ? theme.colors.text : theme.colors.subtext }}>
                                     {currentInvoice.due_date || "Due Date"}
                                 </Text>
                             </TouchableOpacity>
@@ -454,9 +468,15 @@ export const InvoicesScreen = () => {
                                  <TouchableOpacity 
                                     key={s} 
                                     onPress={() => setCurrentInvoice({...currentInvoice, status: s})}
-                                    style={[styles.statusChip, currentInvoice.status === s && styles.statusChipActive]}
+                                    style={[
+                                        styles.statusChip, 
+                                        currentInvoice.status === s && { backgroundColor: theme.colors.primary }
+                                    ]}
                                  >
-                                     <Text style={[styles.statusChipText, currentInvoice.status === s && styles.statusChipTextActive]}>{s}</Text>
+                                     <Text style={[
+                                         styles.statusChipText, 
+                                         currentInvoice.status === s && styles.statusChipTextActive
+                                     ]}>{s}</Text>
                                  </TouchableOpacity>
                              ))}
                         </View>
@@ -493,8 +513,8 @@ export const InvoicesScreen = () => {
                         <View style={styles.itemsHeader}>
                             <Text style={styles.sectionTitle}>Items</Text>
                             <TouchableOpacity onPress={handleImportOpen} style={styles.importBtn}>
-                                <Ionicons name="download-outline" size={16} color="#047857" />
-                                <Text style={styles.importBtnText}>Import</Text>
+                                <Ionicons name="download-outline" size={16} color={theme.colors.primary} />
+                                <Text style={[styles.importBtnText, { color: theme.colors.primary }]}>Import</Text>
                             </TouchableOpacity>
                         </View>
 
@@ -557,10 +577,10 @@ export const InvoicesScreen = () => {
                         ))}
 
                         <TouchableOpacity 
-                            style={styles.addItemBtn} 
+                            style={[styles.addItemBtn, { borderColor: theme.colors.primary }]} 
                             onPress={() => setInvoiceItems([...invoiceItems, { name: '', description: '', quantity: 1, amount: 0 }])}
                         >
-                            <Text style={styles.addItemBtnText}>+ Add Item</Text>
+                            <Text style={[styles.addItemBtnText, { color: theme.colors.primary }]}>+ Add Item</Text>
                         </TouchableOpacity>
 
                         <View style={styles.summarySection}>
@@ -588,7 +608,7 @@ export const InvoicesScreen = () => {
                             </View>
                             <View style={[styles.summaryRow, { borderTopWidth: 1, borderTopColor: '#ddd', paddingTop: 8, marginTop: 8 }]}>
                                 <Text style={styles.totalLabel}>Total Amount</Text>
-                                <Text style={styles.totalValue}>₹{totals.total.toFixed(2)}</Text>
+                                <Text style={[styles.totalValue, { color: theme.colors.primary }]}>₹{totals.total.toFixed(2)}</Text>
                             </View>
                         </View>
                         
@@ -596,7 +616,7 @@ export const InvoicesScreen = () => {
                     </ScrollView>
 
                     <View style={styles.modalFooter}>
-                        <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
+                        <TouchableOpacity style={[styles.saveBtn, { backgroundColor: theme.colors.primary }]} onPress={handleSave}>
                             <Text style={styles.saveBtnText}>Save Invoice</Text>
                         </TouchableOpacity>
                     </View>
@@ -620,7 +640,7 @@ export const InvoicesScreen = () => {
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>Import Income</Text>
                             <TouchableOpacity onPress={() => setImportModalVisible(false)}>
-                                <Ionicons name="close" size={24} color="#333" />
+                                <Ionicons name="close" size={24} color={theme.colors.text} />
                             </TouchableOpacity>
                         </View>
                         <FlatList
@@ -643,78 +663,109 @@ export const InvoicesScreen = () => {
     );
 };
 
-const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f3f4f6' },
-    emptyText: { textAlign: 'center', marginTop: 50, color: '#6b7280' },
-    fab: {
-        position: 'absolute', right: 20, bottom: 20,
-        backgroundColor: '#047857', width: 56, height: 56, borderRadius: 28,
-        justifyContent: 'center', alignItems: 'center', elevation: 5, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 5
+const getStyles = (theme: any) => StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.colors.background },
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 16,
+        paddingTop: 20,
+        backgroundColor: theme.colors.card,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.border,
     },
+    headerActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    title: {
+        fontSize: 28,
+        fontWeight: '800',
+        color: theme.colors.text,
+        letterSpacing: -0.5,
+    },
+    addButton: {
+        backgroundColor: theme.colors.primary,
+        padding: 10,
+        borderRadius: 20,
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 5,
+    },
+    toggleButton: {
+        marginRight: 8,
+        backgroundColor: theme.mode === 'dark' ? theme.colors.input : '#EEF2FF',
+        padding: 8,
+        borderRadius: 999,
+    },
+    emptyText: { textAlign: 'center', marginTop: 50, color: theme.colors.subtext },
     card: {
-        backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 12,
+        backgroundColor: theme.colors.card, borderRadius: 12, padding: 16, marginBottom: 12,
         shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 5, elevation: 2
     },
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-    invoiceNumber: { fontSize: 16, fontWeight: 'bold', color: '#111827' },
-    clientName: { fontSize: 14, color: '#6b7280' },
-    amount: { fontSize: 18, fontWeight: 'bold', color: '#047857' },
-    date: { fontSize: 12, color: '#9ca3af', marginBottom: 12 },
+    invoiceNumber: { fontSize: 16, fontWeight: 'bold', color: theme.colors.text },
+    clientName: { fontSize: 14, color: theme.colors.subtext },
+    amount: { fontSize: 18, fontWeight: 'bold', color: theme.colors.primary },
+    date: { fontSize: 12, color: theme.colors.subtext, marginBottom: 12 },
     badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12, marginTop: 4 },
     badgeText: { fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase' },
-    cardActions: { flexDirection: 'row', justifyContent: 'flex-end', borderTopWidth: 1, borderTopColor: '#f3f4f6', paddingTop: 12 },
+    cardActions: { flexDirection: 'row', justifyContent: 'flex-end', borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 12 },
     actionBtn: { marginLeft: 16, padding: 4 },
     
-    modalContainer: { flex: 1, backgroundColor: '#fff' },
-    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' },
-    modalTitle: { fontSize: 18, fontWeight: 'bold' },
+    modalContainer: { flex: 1, backgroundColor: theme.colors.card },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
+    modalTitle: { fontSize: 18, fontWeight: 'bold', color: theme.colors.text },
     modalContent: { flex: 1, padding: 16 },
-    modalFooter: { padding: 16, borderTopWidth: 1, borderTopColor: '#e5e7eb' },
+    modalFooter: { padding: 16, borderTopWidth: 1, borderTopColor: theme.colors.border },
     
-    sectionTitle: { fontSize: 14, fontWeight: 'bold', color: '#374151', marginBottom: 12, marginTop: 8, textTransform: 'uppercase' },
-    input: { backgroundColor: '#f9fafb', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 12, marginBottom: 12, fontSize: 16 },
+    sectionTitle: { fontSize: 14, fontWeight: 'bold', color: theme.colors.text, marginBottom: 12, marginTop: 8, textTransform: 'uppercase' },
+    input: { backgroundColor: theme.mode === 'dark' ? theme.colors.background : '#f9fafb', borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, padding: 12, marginBottom: 12, fontSize: 16, color: theme.colors.text },
     row: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-    statusChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: '#f3f4f6', marginRight: 8 },
-    statusChipActive: { backgroundColor: '#047857' },
-    statusChipText: { color: '#374151', fontSize: 12 },
+    statusChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: theme.colors.background, marginRight: 8 },
+    statusChipActive: { backgroundColor: theme.colors.primary },
+    statusChipText: { color: theme.colors.text, fontSize: 12 },
     statusChipTextActive: { color: '#fff', fontWeight: 'bold' },
     
     itemsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, marginBottom: 12 },
     importBtn: { flexDirection: 'row', alignItems: 'center', padding: 8 },
-    importBtnText: { color: '#047857', fontWeight: 'bold', marginLeft: 4 },
+    importBtnText: { color: theme.colors.primary, fontWeight: 'bold', marginLeft: 4 },
     
-    itemRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16, borderBottomWidth: 1, borderBottomColor: '#f3f4f6', paddingBottom: 16 },
-    addItemBtn: { padding: 12, alignItems: 'center', borderWidth: 1, borderColor: '#047857', borderRadius: 8, borderStyle: 'dashed', marginTop: 8 },
-    addItemBtnText: { color: '#047857', fontWeight: 'bold' },
+    itemRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16, borderBottomWidth: 1, borderBottomColor: theme.colors.border, paddingBottom: 16 },
+    addItemBtn: { padding: 12, alignItems: 'center', borderWidth: 1, borderColor: theme.colors.primary, borderRadius: 8, borderStyle: 'dashed', marginTop: 8 },
+    addItemBtnText: { color: theme.colors.primary, fontWeight: 'bold' },
     
-    summarySection: { marginTop: 24, padding: 16, backgroundColor: '#f9fafb', borderRadius: 8 },
+    summarySection: { marginTop: 24, padding: 16, backgroundColor: theme.mode === 'dark' ? theme.colors.background : '#f9fafb', borderRadius: 8 },
     summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8, alignItems: 'center' },
-    summaryValue: { fontWeight: 'bold', color: '#333' },
-    totalLabel: { fontSize: 16, color: '#374151', fontWeight: 'bold' },
-    totalValue: { fontSize: 24, fontWeight: 'bold', color: '#047857' },
+    summaryValue: { fontWeight: 'bold', color: theme.colors.text },
+    totalLabel: { fontSize: 16, color: theme.colors.text, fontWeight: 'bold' },
+    totalValue: { fontSize: 24, fontWeight: 'bold', color: theme.colors.primary },
     
-    saveBtn: { backgroundColor: '#047857', padding: 16, borderRadius: 12, alignItems: 'center' },
+    saveBtn: { backgroundColor: theme.colors.primary, padding: 16, borderRadius: 12, alignItems: 'center' },
     saveBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
 
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
-    smallModal: { backgroundColor: '#fff', borderRadius: 12, maxHeight: '80%', padding: 16 },
-    recordItem: { padding: 12, borderBottomWidth: 1, borderBottomColor: '#f3f4f6', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    recordDesc: { fontWeight: 'bold', color: '#374151' },
-    recordDate: { fontSize: 12, color: '#9ca3af' },
-    recordAmount: { color: '#10b981', fontWeight: 'bold' },
+    smallModal: { backgroundColor: theme.colors.card, borderRadius: 12, maxHeight: '80%', padding: 16 },
+    recordItem: { padding: 12, borderBottomWidth: 1, borderBottomColor: theme.colors.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    recordDesc: { fontWeight: 'bold', color: theme.colors.text },
+    recordDate: { fontSize: 12, color: theme.colors.subtext },
+    recordAmount: { color: theme.colors.success, fontWeight: 'bold' },
     
     // Calendar Styles
-    calendarContainer: { backgroundColor: '#fff', borderRadius: 12, padding: 16, width: '100%', maxWidth: 350, alignSelf: 'center' },
+    calendarContainer: { backgroundColor: theme.colors.card, borderRadius: 12, padding: 16, width: '100%', maxWidth: 350, alignSelf: 'center' },
     calendarHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-    calendarTitle: { fontSize: 16, fontWeight: 'bold' },
+    calendarTitle: { fontSize: 16, fontWeight: 'bold', color: theme.colors.text },
     weekDays: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 8 },
-    weekDayText: { color: '#9ca3af', width: 30, textAlign: 'center' },
+    weekDayText: { color: theme.colors.subtext, width: 30, textAlign: 'center' },
     calendarGrid: { flexDirection: 'row', flexWrap: 'wrap' },
     calendarDay: { width: '14.28%', height: 40, justifyContent: 'center', alignItems: 'center', marginBottom: 4 },
-    calendarDayText: { color: '#333' },
-    calendarDaySelected: { backgroundColor: '#047857', borderRadius: 20 },
+    calendarDayText: { color: theme.colors.text },
+    calendarDaySelected: { backgroundColor: theme.colors.primary, borderRadius: 20 },
     calendarDayTextSelected: { color: '#fff', fontWeight: 'bold' },
-    calendarDayToday: { borderWidth: 1, borderColor: '#047857', borderRadius: 20 },
+    calendarDayToday: { borderWidth: 1, borderColor: theme.colors.primary, borderRadius: 20 },
     closeBtn: { marginTop: 16, padding: 12, alignItems: 'center' },
-    closeBtnText: { color: '#666' }
+    closeBtnText: { color: theme.colors.subtext }
 });

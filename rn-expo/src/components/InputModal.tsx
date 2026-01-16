@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { Modal, View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
+import { UIContext } from '../context/UIContext';
 
 interface InputModalProps {
     visible: boolean;
@@ -30,6 +31,7 @@ export const InputModal = ({
     keyboardType = 'default',
     maxLength
 }: InputModalProps) => {
+    const { theme } = useContext(UIContext);
     const [value, setValue] = useState(initialValue);
 
     React.useEffect(() => {
@@ -50,25 +52,33 @@ export const InputModal = ({
         >
             <View style={styles.centeredView}>
                 {Platform.OS === 'ios' ? (
-                    <BlurView style={styles.absolute} intensity={30} tint="dark" />
+                    <BlurView style={styles.absolute} intensity={30} tint={theme.mode === 'dark' ? 'dark' : 'light'} />
                 ) : (
                     <View style={styles.absoluteAndroid} />
                 )}
 
                 <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ width: '100%', alignItems: 'center' }}>
-                    <View style={styles.modalView}>
+                    <View style={[styles.modalView, { backgroundColor: theme.colors.card }]}>
                         <View style={styles.header}>
-                            <Text style={styles.modalTitle}>{title}</Text>
+                            <Text style={[styles.modalTitle, { color: theme.colors.text }]}>{title}</Text>
                             <TouchableOpacity onPress={onClose}>
-                                <Ionicons name="close" size={24} color="#999" />
+                                <Ionicons name="close" size={24} color={theme.colors.subtext} />
                             </TouchableOpacity>
                         </View>
                         
-                        {message && <Text style={styles.modalMessage}>{message}</Text>}
+                        {message && <Text style={[styles.modalMessage, { color: theme.colors.subtext }]}>{message}</Text>}
 
                         <TextInput
-                            style={styles.input}
+                            style={[
+                                styles.input, 
+                                { 
+                                    backgroundColor: theme.colors.input, 
+                                    borderColor: theme.colors.border,
+                                    color: theme.colors.text
+                                }
+                            ]}
                             placeholder={placeholder}
+                            placeholderTextColor={theme.colors.placeholder}
                             value={value}
                             onChangeText={setValue}
                             autoFocus={true}
@@ -80,9 +90,9 @@ export const InputModal = ({
 
                         <View style={styles.buttonRow}>
                             <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
-                                <Text style={styles.cancelButtonText}>Cancel</Text>
+                                <Text style={[styles.cancelButtonText, { color: theme.colors.subtext }]}>Cancel</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+                            <TouchableOpacity style={[styles.submitButton, { backgroundColor: theme.colors.primary }]} onPress={handleSubmit}>
                                 <Text style={styles.submitButtonText}>{submitLabel}</Text>
                             </TouchableOpacity>
                         </View>

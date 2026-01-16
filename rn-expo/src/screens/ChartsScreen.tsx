@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext, useMemo } from "react";
 import { View, Text, ScrollView, Dimensions, StyleSheet, TouchableOpacity, Platform, Alert } from "react-native";
 import { BarChart, PieChart } from "react-native-chart-kit";
 import * as Print from 'expo-print';
@@ -7,8 +7,11 @@ import { Store } from "../data/Store";
 import { AppHeader } from "../components/AppHeader";
 import { useIsFocused } from "@react-navigation/native";
 import { Ionicons } from '@expo/vector-icons';
+import { UIContext } from "../context/UIContext";
 
 export default function ChartsScreen() {
+  const { theme } = useContext(UIContext);
+  const styles = useMemo(() => getStyles(theme), [theme]);
   const width = Dimensions.get("window").width;
   const isFocused = useIsFocused();
   
@@ -82,7 +85,7 @@ export default function ChartsScreen() {
           amount: catMap[cat].amount,
           count: catMap[cat].count,
           color: colors[i % colors.length],
-          legendFontColor: "#7F7F7F",
+          legendFontColor: theme.colors.subtext,
           legendFontSize: 12
         }))
         .sort((a, b) => b.amount - a.amount); // Sort by highest expense
@@ -304,7 +307,7 @@ export default function ChartsScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#f8f9fa" }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <AppHeader title="Analytics" subtitle="Financial Overview" />
       
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
@@ -313,11 +316,11 @@ export default function ChartsScreen() {
         <View style={styles.filterRow}>
             <View style={styles.monthSelector}>
                 <TouchableOpacity onPress={() => changeMonth(-1)}>
-                    <Ionicons name="chevron-back" size={24} color="#333" />
+                    <Ionicons name="chevron-back" size={24} color={theme.colors.text} />
                 </TouchableOpacity>
                 <Text style={styles.monthText}>{new Date(Number(year), Number(month)-1).toLocaleString('default', { month: 'long', year: 'numeric' })}</Text>
                 <TouchableOpacity onPress={() => changeMonth(1)}>
-                    <Ionicons name="chevron-forward" size={24} color="#333" />
+                    <Ionicons name="chevron-forward" size={24} color={theme.colors.text} />
                 </TouchableOpacity>
             </View>
             
@@ -333,13 +336,13 @@ export default function ChartsScreen() {
                 <View>
                     <Text style={styles.cardTitle}>Activity</Text>
                     <Text style={styles.balanceLabel}>Total Balance</Text>
-                    <Text style={[styles.balanceValue, { color: data.totalBalance >= 0 ? '#2ecc71' : '#e74c3c' }]}>
+                    <Text style={[styles.balanceValue, { color: data.totalBalance >= 0 ? (theme.colors.success || '#2ecc71') : (theme.colors.danger || '#e74c3c') }]}>
                         ₹{data.totalBalance.toLocaleString('en-IN')}
                     </Text>
                 </View>
                 <View style={{ flexDirection: 'row', gap: 12 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <View style={[styles.dot, { backgroundColor: '#2ecc71' }]} />
+                        <View style={[styles.dot, { backgroundColor: theme.colors.success || '#2ecc71' }]} />
                         <Text style={styles.legendText}>Earned</Text>
                     </View>
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -359,17 +362,18 @@ export default function ChartsScreen() {
                 yAxisLabel="₹"
                 yAxisSuffix=""
                 chartConfig={{
-                backgroundColor: "#fff",
-                backgroundGradientFrom: "#fff",
-                backgroundGradientTo: "#fff",
+                backgroundColor: theme.colors.card,
+                backgroundGradientFrom: theme.colors.card,
+                backgroundGradientTo: theme.colors.card,
                 decimalPlaces: 0,
-                color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                labelColor: (opacity = 1) => `rgba(100, 100, 100, ${opacity})`,
+                color: (opacity = 1) => theme.mode === 'dark' ? `rgba(255, 255, 255, ${opacity})` : `rgba(0, 0, 0, ${opacity})`,
+                labelColor: (opacity = 1) => theme.mode === 'dark' ? `rgba(156, 163, 175, ${opacity})` : `rgba(107, 114, 128, ${opacity})`,
                 barPercentage: 0.7,
-                fillShadowGradient: '#e74c3c',
+                fillShadowGradient: theme.colors.danger || '#e74c3c',
                 fillShadowGradientOpacity: 1,
                 propsForBackgroundLines: {
                     strokeDasharray: "",
+                    stroke: theme.colors.border
                 },
                 propsForLabels: {
                     fontSize: 12,
@@ -386,8 +390,8 @@ export default function ChartsScreen() {
         <View style={styles.card}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <Text style={styles.cardTitle}>Summary</Text>
-                <View style={{ backgroundColor: '#f0f0f0', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 }}>
-                    <Text style={{ fontSize: 12, color: '#666' }}>This Month</Text>
+                <View style={{ backgroundColor: theme.colors.input, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 }}>
+                    <Text style={{ fontSize: 12, color: theme.colors.subtext }}>This Month</Text>
                 </View>
             </View>
             
@@ -398,7 +402,7 @@ export default function ChartsScreen() {
                         width={width - 48}
                         height={240}
                         chartConfig={{
-                            color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                            color: (opacity = 1) => theme.mode === 'dark' ? `rgba(255, 255, 255, ${opacity})` : `rgba(0, 0, 0, ${opacity})`,
                         }}
                         accessor={"amount"}
                         backgroundColor={"transparent"}
@@ -415,7 +419,7 @@ export default function ChartsScreen() {
                         marginLeft: -60,
                         width: 120,
                         height: 120,
-                        backgroundColor: 'white',
+                        backgroundColor: theme.colors.card,
                         borderRadius: 60,
                         alignItems: 'center', 
                         justifyContent: 'center',
@@ -424,14 +428,14 @@ export default function ChartsScreen() {
                         shadowOpacity: 0.1,
                         elevation: 2
                     }}>
-                        <Text style={{ fontSize: 12, color: '#888' }}>Total</Text>
-                        <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#333' }}>
+                        <Text style={{ fontSize: 12, color: theme.colors.subtext }}>Total</Text>
+                        <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text }}>
                             ₹{data.totalExp.toLocaleString('en-IN', { notation: "compact", compactDisplay: "short" })}
                         </Text>
                     </View>
                 </View>
             ) : (
-                <Text style={{ textAlign: 'center', color: '#999', padding: 20 }}>No expenses recorded</Text>
+                <Text style={{ textAlign: 'center', color: theme.colors.subtext, padding: 20 }}>No expenses recorded</Text>
             )}
 
             {/* Custom List of Categories */}
@@ -458,9 +462,9 @@ export default function ChartsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
     card: {
-        backgroundColor: '#fff',
+        backgroundColor: theme.colors.card,
         marginHorizontal: 16,
         marginTop: 16,
         borderRadius: 20,
@@ -469,15 +473,17 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.08,
         elevation: 4,
+        borderWidth: 1,
+        borderColor: theme.colors.border
     },
     cardTitle: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#1a1a1a',
+        color: theme.colors.text,
     },
     balanceLabel: {
         fontSize: 14,
-        color: '#666',
+        color: theme.colors.subtext,
         marginTop: 4
     },
     balanceValue: {
@@ -493,7 +499,7 @@ const styles = StyleSheet.create({
     },
     legendText: {
         fontSize: 12,
-        color: '#666',
+        color: theme.colors.subtext,
         fontWeight: '500'
     },
     categoryRow: {
@@ -512,17 +518,17 @@ const styles = StyleSheet.create({
     categoryName: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#333'
+        color: theme.colors.text
     },
     transactionCount: {
         fontSize: 12,
-        color: '#999',
+        color: theme.colors.subtext,
         marginTop: 2
     },
     categoryAmount: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: '#333'
+        color: theme.colors.text
     },
     filterRow: {
         flexDirection: 'row',
@@ -534,19 +540,21 @@ const styles = StyleSheet.create({
     monthSelector: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#fff',
+        backgroundColor: theme.colors.card,
         paddingHorizontal: 12,
         paddingVertical: 8,
         borderRadius: 20,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
-        elevation: 2
+        elevation: 2,
+        borderWidth: 1,
+        borderColor: theme.colors.border
     },
     monthText: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#333',
+        color: theme.colors.text,
         marginHorizontal: 12,
         minWidth: 120,
         textAlign: 'center'
@@ -554,11 +562,11 @@ const styles = StyleSheet.create({
     pdfButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FF6B81',
+        backgroundColor: theme.colors.primary,
         paddingHorizontal: 16,
         paddingVertical: 10,
         borderRadius: 20,
-        shadowColor: '#FF6B81',
+        shadowColor: theme.colors.primary,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
         elevation: 4

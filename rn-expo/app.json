@@ -20,6 +20,10 @@
       "supportsTablet": true
     },
     "android": {
+      "statusBar": {
+        "translucent": true,
+        "backgroundColor": "transparent"
+      },
       "adaptiveIcon": {
         "foregroundImage": "./assets/tsl_icon.png",
         "backgroundColor": "#ffffff"

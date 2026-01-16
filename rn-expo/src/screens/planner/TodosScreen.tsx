@@ -1,10 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext, useMemo } from 'react';
 import { View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet, Alert, KeyboardAvoidingView, Platform, Modal, Switch } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Store, Todo } from '../../data/Store';
 import { NotificationService } from '../../services/NotificationService';
-
+import { UIContext } from '../../context/UIContext';
 export const TodosScreen = () => {
+    const { theme } = useContext(UIContext);
+    const styles = useMemo(() => getStyles(theme), [theme]);
     const [todos, setTodos] = useState<Todo[]>([]);
     const [showCompleted, setShowCompleted] = useState(true);
     
@@ -94,7 +97,7 @@ export const TodosScreen = () => {
                     <Ionicons 
                         name={item.is_completed ? "checkbox" : "square-outline"} 
                         size={24} 
-                        color={item.is_completed ? "#10B981" : "#9CA3AF"} 
+                        color={item.is_completed ? theme.colors.success : theme.colors.placeholder} 
                     />
                 </TouchableOpacity>
                 <View style={{ flex: 1, marginLeft: 12 }}>
@@ -103,35 +106,38 @@ export const TodosScreen = () => {
                     </Text>
                     {(item.due_date || item.due_time) && (
                         <View style={styles.metaRow}>
-                            <Ionicons name="calendar-outline" size={12} color="#6B7280" style={{marginRight: 4}} />
+                            <Ionicons name="calendar-outline" size={12} color={theme.colors.subtext} style={{marginRight: 4}} />
                             <Text style={styles.dueText}>
                                 {item.due_date} {item.due_time}
                             </Text>
                             {item.notification_id && (
                                 <View style={styles.reminderBadge}>
-                                    <Ionicons name="alarm" size={10} color="#F59E0B" />
+                                    <Ionicons name="alarm" size={10} color={theme.colors.primary} />
                                 </View>
                             )}
                         </View>
                     )}
                 </View>
                 <TouchableOpacity onPress={() => deleteTodo(item)} style={styles.deleteButtonIcon}>
-                    <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                    <Ionicons name="trash-outline" size={20} color={theme.colors.danger} />
                 </TouchableOpacity>
             </View>
         );
     };
 
     return (
-        <View style={styles.container}>
+        <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
             <View style={styles.header}>
                 <Text style={styles.title}>Tasks</Text>
                 <View style={styles.headerActions}>
+                    <TouchableOpacity onPress={handleAddPress} style={styles.toggleButton}>
+                        <Ionicons name="add" size={24} color={theme.colors.primary} />
+                    </TouchableOpacity>
                     <TouchableOpacity onPress={() => Store.setAppMode('finance')} style={styles.toggleButton}>
-                        <Ionicons name="swap-horizontal" size={20} color="#4F46E5" />
+                        <Ionicons name="swap-horizontal" size={20} color={theme.colors.primary} />
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => setShowCompleted(!showCompleted)} style={styles.filterButton}>
-                        <Ionicons name={showCompleted ? "eye-off-outline" : "eye-outline"} size={20} color="#6B7280" />
+                        <Ionicons name={showCompleted ? "eye-off-outline" : "eye-outline"} size={20} color={theme.colors.subtext} />
                         <Text style={styles.filterText}>{showCompleted ? "Hide Done" : "Show Done"}</Text>
                     </TouchableOpacity>
                 </View>
@@ -159,6 +165,7 @@ export const TodosScreen = () => {
                         <TextInput
                             style={styles.input}
                             placeholder="What needs to be done?"
+                            placeholderTextColor={theme.colors.placeholder}
                             value={taskText}
                             onChangeText={setTaskText}
                         />
@@ -167,6 +174,7 @@ export const TodosScreen = () => {
                         <TextInput
                             style={styles.input}
                             placeholder="YYYY-MM-DD"
+                            placeholderTextColor={theme.colors.placeholder}
                             value={taskDate}
                             onChangeText={setTaskDate}
                         />
@@ -179,7 +187,7 @@ export const TodosScreen = () => {
                             <Switch 
                                 value={enableReminder} 
                                 onValueChange={setEnableReminder}
-                                trackColor={{ false: "#D1D5DB", true: "#4F46E5" }}
+                                trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
                             />
                         </View>
 
@@ -189,6 +197,7 @@ export const TodosScreen = () => {
                                 <TextInput
                                     style={styles.input}
                                     placeholder="14:30"
+                                    placeholderTextColor={theme.colors.placeholder}
                                     value={taskTime}
                                     onChangeText={setTaskTime}
                                     keyboardType="numbers-and-punctuation"
@@ -207,14 +216,14 @@ export const TodosScreen = () => {
                     </View>
                 </View>
             </Modal>
-        </View>
+        </SafeAreaView>
     );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F3F4F6',
+        backgroundColor: theme.colors.background,
     },
     header: {
         flexDirection: 'row',
@@ -222,9 +231,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         padding: 16,
         paddingTop: 20,
-        backgroundColor: '#fff',
+        backgroundColor: theme.colors.card,
         borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
+        borderBottomColor: theme.colors.border,
     },
     headerActions: {
         flexDirection: 'row',
@@ -233,33 +242,33 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 28,
         fontWeight: '800',
-        color: '#111827',
+        color: theme.colors.text,
         letterSpacing: -0.5,
     },
     filterButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F3F4F6',
+        backgroundColor: theme.colors.background,
         paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: 20,
     },
     toggleButton: {
         marginRight: 8,
-        backgroundColor: '#EEF2FF',
+        backgroundColor: theme.colors.lighter,
         padding: 8,
         borderRadius: 999,
     },
     filterText: {
         fontSize: 12,
         fontWeight: '600',
-        color: '#6B7280',
+        color: theme.colors.subtext,
         marginLeft: 4,
     },
     item: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#fff',
+        backgroundColor: theme.colors.card,
         padding: 16,
         borderRadius: 16,
         marginBottom: 12,
@@ -271,7 +280,7 @@ const styles = StyleSheet.create({
     },
     itemCompleted: {
         opacity: 0.7,
-        backgroundColor: '#F9FAFB',
+        backgroundColor: theme.colors.background,
     },
     checkButton: {
         marginRight: 4,
@@ -279,11 +288,11 @@ const styles = StyleSheet.create({
     itemText: {
         fontSize: 16,
         fontWeight: '500',
-        color: '#1F2937',
+        color: theme.colors.text,
     },
     completedText: {
         textDecorationLine: 'line-through',
-        color: '#9CA3AF',
+        color: theme.colors.placeholder,
     },
     metaRow: {
         flexDirection: 'row',
@@ -292,11 +301,11 @@ const styles = StyleSheet.create({
     },
     dueText: {
         fontSize: 12,
-        color: '#6B7280',
+        color: theme.colors.subtext,
     },
     reminderBadge: {
         marginLeft: 6,
-        backgroundColor: '#FEF3C7',
+        backgroundColor: theme.colors.lighter,
         padding: 2,
         borderRadius: 4,
     },
@@ -307,13 +316,13 @@ const styles = StyleSheet.create({
         position: 'absolute',
         right: 20,
         bottom: 20,
-        backgroundColor: '#4F46E5',
+        backgroundColor: theme.colors.primary,
         width: 56,
         height: 56,
         borderRadius: 28,
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: "#4F46E5",
+        shadowColor: theme.colors.primary,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
@@ -321,7 +330,7 @@ const styles = StyleSheet.create({
     },
     emptyText: {
         textAlign: 'center',
-        color: '#9CA3AF',
+        color: theme.colors.subtext,
         marginTop: 60,
         fontSize: 16,
     },
@@ -332,7 +341,7 @@ const styles = StyleSheet.create({
         padding: 20,
     },
     modalContent: {
-        backgroundColor: '#fff',
+        backgroundColor: theme.colors.card,
         borderRadius: 24,
         padding: 24,
         shadowColor: "#000",
@@ -346,26 +355,27 @@ const styles = StyleSheet.create({
         fontWeight: '800',
         marginBottom: 20,
         textAlign: 'center',
-        color: '#111827',
+        color: theme.colors.text,
     },
     label: {
         fontSize: 14,
         fontWeight: '600',
-        color: '#374151',
+        color: theme.colors.text,
         marginBottom: 8,
         marginTop: 8,
     },
     subLabel: {
         fontSize: 12,
-        color: '#9CA3AF',
+        color: theme.colors.subtext,
     },
     input: {
-        backgroundColor: '#F9FAFB',
+        backgroundColor: theme.colors.input,
+        color: theme.colors.text,
         padding: 14,
         borderRadius: 12,
         fontSize: 16,
         borderWidth: 1,
-        borderColor: '#E5E7EB',
+        borderColor: theme.colors.border,
         marginBottom: 10,
     },
     row: {
@@ -388,16 +398,16 @@ const styles = StyleSheet.create({
         marginRight: 10,
     },
     cancelButtonText: {
-        color: '#6B7280',
+        color: theme.colors.subtext,
         fontSize: 16,
         fontWeight: '600',
     },
     saveButton: {
-        backgroundColor: '#4F46E5',
+        backgroundColor: theme.colors.primary,
         paddingHorizontal: 24,
         paddingVertical: 12,
         borderRadius: 12,
-        shadowColor: "#4F46E5",
+        shadowColor: theme.colors.primary,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
         shadowRadius: 8,

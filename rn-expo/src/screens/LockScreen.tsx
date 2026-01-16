@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext, useMemo } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Alert, Dimensions, Platform } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { Store } from "../data/Store";
+import { UIContext } from "../context/UIContext";
+import { getTheme } from "../constants/Theme";
 
 const { width } = Dimensions.get("window");
 
@@ -11,6 +13,9 @@ interface LockScreenProps {
 }
 
 export default function LockScreen({ onUnlock }: LockScreenProps) {
+    const { theme } = useContext(UIContext);
+    const styles = useMemo(() => getStyles(theme), [theme]);
+    
     const [pin, setPin] = useState("");
     const [error, setError] = useState("");
     
@@ -76,9 +81,7 @@ export default function LockScreen({ onUnlock }: LockScreenProps) {
                     style: "destructive", 
                     onPress: () => {
                         Store.setAuthenticated(false);
-                        // Store.settings.lock_enabled = false; // Optional: disable lock on reset?
-                        // Store.setSettings({ lock_enabled: false }); // Let's keep it enabled but they can change it in settings
-                        onUnlock(); // Hide lock screen so Auth screen can show
+                        onUnlock(); 
                     } 
                 }
             ]
@@ -88,7 +91,7 @@ export default function LockScreen({ onUnlock }: LockScreenProps) {
     return (
         <View style={styles.container}>
             <View style={styles.iconContainer}>
-                <Ionicons name="lock-closed" size={40} color="#4F46E5" />
+                <Ionicons name="lock-closed" size={40} color={theme.colors.primary} />
             </View>
             <Text style={styles.title}>App Locked</Text>
             <Text style={styles.subtitle}>Enter your 4-digit PIN</Text>
@@ -123,7 +126,7 @@ export default function LockScreen({ onUnlock }: LockScreenProps) {
                                         disabled={!Store.settings.biometrics_enabled}
                                     >
                                         {Store.settings.biometrics_enabled && (
-                                            <Ionicons name="finger-print" size={32} color="#4F46E5" />
+                                            <Ionicons name="finger-print" size={32} color={theme.colors.primary} />
                                         )}
                                     </TouchableOpacity>
                                 );
@@ -131,7 +134,7 @@ export default function LockScreen({ onUnlock }: LockScreenProps) {
                             if (item === 'del') {
                                 return (
                                     <TouchableOpacity key="del" style={styles.key} onPress={handleDelete}>
-                                        <Ionicons name="backspace-outline" size={28} color="#1F2937" />
+                                        <Ionicons name="backspace-outline" size={28} color={theme.colors.text} />
                                     </TouchableOpacity>
                                 );
                             }
@@ -156,10 +159,10 @@ export default function LockScreen({ onUnlock }: LockScreenProps) {
     );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F3F4F6',
+        backgroundColor: theme.colors.background,
         alignItems: 'center',
         justifyContent: 'center',
         paddingBottom: 40
@@ -168,11 +171,11 @@ const styles = StyleSheet.create({
         width: 80,
         height: 80,
         borderRadius: 40,
-        backgroundColor: '#EEF2FF',
+        backgroundColor: theme.mode === 'dark' ? theme.colors.card : theme.colors.primary + '20', // Light opacity
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 20,
-        shadowColor: "#4F46E5",
+        shadowColor: theme.colors.primary,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
         shadowRadius: 10,
@@ -181,12 +184,12 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 24,
         fontWeight: '800',
-        color: '#1F2937',
+        color: theme.colors.text,
         marginBottom: 8
     },
     subtitle: {
         fontSize: 14,
-        color: '#6B7280',
+        color: theme.colors.subtext,
         marginBottom: 40
     },
     pinDisplay: {
@@ -198,19 +201,19 @@ const styles = StyleSheet.create({
         height: 16,
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: '#9CA3AF',
+        borderColor: theme.colors.placeholder,
         marginHorizontal: 12
     },
     pinDotFilled: {
-        backgroundColor: '#4F46E5',
-        borderColor: '#4F46E5'
+        backgroundColor: theme.colors.primary,
+        borderColor: theme.colors.primary
     },
     pinDotError: {
-        borderColor: '#EF4444',
-        backgroundColor: '#FCA5A5'
+        borderColor: theme.colors.danger,
+        backgroundColor: theme.colors.danger + '40' // lighter danger
     },
     errorText: {
-        color: '#EF4444',
+        color: theme.colors.danger,
         marginBottom: 20,
         fontWeight: '600'
     },
@@ -227,7 +230,7 @@ const styles = StyleSheet.create({
         width: 80,
         height: 80,
         borderRadius: 40,
-        backgroundColor: '#fff',
+        backgroundColor: theme.colors.card,
         alignItems: 'center',
         justifyContent: 'center',
         shadowColor: "#000",
@@ -239,13 +242,13 @@ const styles = StyleSheet.create({
     keyText: {
         fontSize: 28,
         fontWeight: '600',
-        color: '#1F2937'
+        color: theme.colors.text
     },
     forgotButton: {
         marginTop: 20
     },
     forgotText: {
-        color: '#4F46E5',
+        color: theme.colors.primary,
         fontWeight: '600'
     }
 });

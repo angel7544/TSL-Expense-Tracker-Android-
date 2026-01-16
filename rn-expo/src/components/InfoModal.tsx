@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { View, Text, Modal, TouchableOpacity, Image, Linking, StyleSheet, Platform, Switch } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { Store } from '../data/Store';
+import { UIContext } from '../context/UIContext';
 
 interface InfoModalProps {
     visible: boolean;
@@ -11,6 +12,7 @@ interface InfoModalProps {
 }
 
 export const InfoModal = ({ visible, onClose, logoUri }: InfoModalProps) => {
+    const { theme } = useContext(UIContext);
     const openLink = (url: string) => Linking.openURL(url).catch(err => console.error("Couldn't load page", err));
     const [isPlannerMode, setIsPlannerMode] = useState(Store.appMode === 'planner');
 
@@ -32,44 +34,44 @@ export const InfoModal = ({ visible, onClose, logoUri }: InfoModalProps) => {
         >
             <View style={styles.centeredView}>
                 {Platform.OS === 'ios' ? (
-                    <BlurView style={styles.absolute} intensity={50} tint="dark" />
+                    <BlurView style={styles.absolute} intensity={50} tint={theme.mode === 'dark' ? 'dark' : 'light'} />
                 ) : (
                     <View style={styles.absoluteAndroid} />
                 )}
                 
-                <View style={styles.modalView}>
+                <View style={[styles.modalView, { backgroundColor: theme.colors.card }]}>
                     <TouchableOpacity 
                         style={styles.closeButton} 
                         onPress={onClose}
                     >
-                        <Ionicons name="close" size={24} color="#333" />
+                        <Ionicons name="close" size={24} color={theme.colors.text} />
                     </TouchableOpacity>
 
                     {logoUri && <Image source={{ uri: logoUri }} style={styles.modalLogo} />}
-                    <Text style={styles.modalTitle}>Expense Tracker</Text>
-                    <Text style={styles.modalVersion}>Version 3.4.0</Text>
+                    <Text style={[styles.modalTitle, { color: theme.colors.text }]}>Expense Tracker</Text>
+                    <Text style={[styles.modalVersion, { color: theme.colors.subtext }]}>Version 3.4.0</Text>
                     
-                    <View style={styles.modeContainer}>
-                        <Text style={styles.modeLabel}>Planner Mode</Text>
+                    <View style={[styles.modeContainer, { backgroundColor: theme.colors.background }]}>
+                        <Text style={[styles.modeLabel, { color: theme.colors.text }]}>Planner Mode</Text>
                         <Switch
                             trackColor={{ false: "#767577", true: "#81b0ff" }}
-                            thumbColor={isPlannerMode ? "#007bff" : "#f4f3f4"}
+                            thumbColor={isPlannerMode ? theme.colors.primary : "#f4f3f4"}
                             ios_backgroundColor="#3e3e3e"
                             onValueChange={toggleMode}
                             value={isPlannerMode}
                         />
                     </View>
 
-                    <Text style={styles.devLabel}>Developed by</Text>
-                    <Text style={styles.devName}>Angel (Mehul) Singh</Text>
-                    <Text style={styles.companyName}>BR31TECHNOLOGIES</Text>
+                    <Text style={[styles.devLabel, { color: theme.colors.subtext }]}>Developed by</Text>
+                    <Text style={[styles.devName, { color: theme.colors.primary }]}>Angel (Mehul) Singh</Text>
+                    <Text style={[styles.companyName, { color: theme.colors.subtext }]}>BR31TECHNOLOGIES</Text>
 
                     <View style={styles.linksContainer}>
-                        <TouchableOpacity onPress={() => openLink("https://br31tech.live")} style={styles.linkButton}>
+                        <TouchableOpacity onPress={() => openLink("https://br31tech.live")} style={[styles.linkButton, { backgroundColor: theme.colors.primary }]}>
                             <Ionicons name="globe-outline" size={20} color="#fff" />
                             <Text style={styles.linkText}>Website</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity onPress={() => openLink("https://github.com/angel7544")} style={[styles.linkButton, { backgroundColor: "#333" }]}>
+                        <TouchableOpacity onPress={() => openLink("https://github.com/angel7544")} style={[styles.linkButton, { backgroundColor: theme.mode === 'dark' ? '#333' : '#1F2937' }]}>
                             <Ionicons name="logo-github" size={20} color="#fff" />
                             <Text style={styles.linkText}>GitHub</Text>
                         </TouchableOpacity>

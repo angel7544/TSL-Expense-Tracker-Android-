@@ -90,6 +90,9 @@ export interface Settings {
     company_address?: string;
     pdf_page_size: 'A4' | 'A5';
     default_view: 'finance' | 'planner';
+    navbar_style?: 'classic' | 'glass';
+    theme_name?: 'indigo' | 'emerald' | 'sky' | 'amber';
+    theme_mode?: 'light' | 'dark';
     backup_enabled?: boolean;
     backup_frequency?: 'daily' | 'weekly' | 'monthly';
     backup_time?: string;
@@ -121,6 +124,9 @@ const defaultSettings: Settings = {
   lock_enabled: undefined,
   lock_pin: "",
   default_view: 'finance',
+  navbar_style: 'classic',
+  theme_name: 'indigo',
+  theme_mode: 'light',
   backup_enabled: false,
   backup_frequency: 'monthly',
   backup_time: "00:00",
@@ -357,6 +363,7 @@ export const Store = {
 
   async setSettings(s: Partial<Settings>) {
     this.settings = { ...this.settings, ...s };
+    this.notify();
     try {
         if (Platform.OS !== 'web') {
             await FileSystem.writeAsStringAsync(SETTINGS_FILE, JSON.stringify(this.settings));
