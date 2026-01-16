@@ -101,48 +101,170 @@ export default function ChartsScreen() {
 
   const generatePDF = async () => {
       try {
+          const settings = Store.getSettings();
+          const maxVal = Math.max(data.totalInc, data.totalExp) || 1;
+          const incPct = Math.round((data.totalInc / maxVal) * 100);
+          const expPct = Math.round((data.totalExp / maxVal) * 100);
+
+          // Calculate Pie Chart Gradient
+          let currentDeg = 0;
+          const pieGradient = data.pieData.map(item => {
+              const pct = data.totalExp > 0 ? (item.amount / data.totalExp) : 0;
+              const deg = pct * 360;
+              const start = currentDeg;
+              const end = currentDeg + deg;
+              currentDeg = end;
+              return `${item.color} ${start}deg ${end}deg`;
+          }).join(', ');
+          
+          const pieStyle = data.totalExp > 0 
+            ? `background: conic-gradient(${pieGradient});`
+            : `background: #eee;`;
+
           const html = `
             <html>
               <head>
+                <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
                 <style>
-                  body { font-family: Helvetica, Arial, sans-serif; padding: 20px; }
-                  h1 { color: #333; }
-                  .summary { margin: 20px 0; padding: 10px; background: #f8f9fa; border-radius: 8px; }
-                  .row { display: flex; justify-content: space-between; margin-bottom: 5px; }
-                  .table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                  .table th, .table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-                  .table th { background-color: #f2f2f2; }
+                  body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 40px; color: #333; background: #fff; }
+                  
+                  /* Header */
+                  .header-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; border-bottom: 2px solid #4e6aff; padding-bottom: 20px; }
+                  .report-title { font-size: 28px; font-weight: 800; color: #1a1a1a; letter-spacing: -0.5px; margin: 0; }
+                  .report-meta { color: #666; font-size: 14px; margin-top: 5px; }
+                  .company-info { text-align: right; font-size: 12px; color: #555; }
+                  .company-name { font-weight: bold; font-size: 16px; color: #333; margin-bottom: 4px; }
+                  
+                  /* Summary Cards */
+                  .summary-cards { display: flex; gap: 20px; margin-bottom: 40px; }
+                  .card { flex: 1; padding: 20px; background: #f8f9fa; border-radius: 12px; border: 1px solid #e9ecef; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+                  .card-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+                  .card-value { font-size: 24px; font-weight: 700; margin-top: 6px; font-family: monospace; }
+                  .income { color: #10b981; }
+                  .expense { color: #ef4444; }
+                  .balance { color: #3b82f6; }
+
+                  .section-title { font-size: 18px; font-weight: 700; color: #1f2937; margin: 40px 0 20px 0; display: flex; align-items: center; }
+                  .section-title::before { content: ''; width: 4px; height: 18px; background: #4e6aff; margin-right: 10px; border-radius: 2px; }
+                  
+                  /* Charts Layout */
+                  .charts-row { display: flex; gap: 40px; margin-bottom: 40px; align-items: flex-start; }
+                  
+                  /* Bar Chart */
+                  .bar-container { flex: 1; padding: 20px; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; display: flex; justify-content: space-around; align-items: flex-end; height: 200px; }
+                  .bar-group { display: flex; flex-direction: column; align-items: center; width: 40%; height: 100%; justify-content: flex-end; }
+                  .bar { width: 100%; border-radius: 6px 6px 0 0; position: relative; transition: height 0.3s; min-height: 4px; }
+                  .bar-value { position: absolute; top: -25px; width: 100%; text-align: center; font-weight: bold; font-size: 14px; }
+                  .bar-label { margin-top: 12px; font-weight: 600; color: #4b5563; font-size: 14px; }
+
+                  /* Pie Chart */
+                  .pie-container { width: 200px; height: 200px; border-radius: 50%; position: relative; }
+                  .pie-hole { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 100px; height: 100px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-direction: column; box-shadow: 0 0 10px rgba(0,0,0,0.05); }
+                  .pie-total-label { font-size: 10px; color: #999; text-transform: uppercase; }
+                  .pie-total-value { font-size: 16px; font-weight: bold; color: #333; }
+
+                  /* Category List */
+                  .cat-list { margin-top: 8px; }
+                  .cat-row { display: flex; align-items: center; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #f3f4f6; }
+                  .cat-row:last-child { border-bottom: none; }
+                  .cat-icon { width: 12px; height: 12px; border-radius: 3px; margin-right: 12px; }
+                  .cat-info { flex: 1; }
+                  .cat-name { font-size: 14px; font-weight: 600; color: #374151; }
+                  .cat-meta { font-size: 11px; color: #9ca3af; }
+                  .cat-amount { font-size: 14px; font-weight: 700; color: #1f2937; }
+                  .cat-pct { font-size: 12px; color: #6b7280; width: 45px; text-align: right; }
+
+                  /* Footer */
+                  .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: flex-end; }
+                  .footer-info { font-size: 11px; color: #9ca3af; line-height: 1.5; }
+                  .watermark { font-size: 10px; color: #d1d5db; font-style: italic; }
                 </style>
               </head>
               <body>
-                <h1>Financial Report</h1>
-                <h3>Period: ${month}/${year}</h3>
+                <div class="header-row">
+                    <div>
+                        <h1 class="report-title">Financial Report</h1>
+                        <div class="report-meta">Period: ${new Date(Number(year), Number(month)-1).toLocaleString('default', { month: 'long', year: 'numeric' })}</div>
+                    </div>
+                    <div class="company-info">
+                        <div class="company-name">${settings.company_name || 'Expense Manager'}</div>
+                        <div>${settings.admin_name} | ${settings.admin_role}</div>
+                        ${settings.company_contact ? `<div>Contact: ${settings.company_contact}</div>` : ''}
+                    </div>
+                </div>
                 
-                <div class="summary">
-                  <div class="row"><strong>Total Income:</strong> <span>₹${data.totalInc.toLocaleString('en-IN')}</span></div>
-                  <div class="row"><strong>Total Expense:</strong> <span>₹${data.totalExp.toLocaleString('en-IN')}</span></div>
-                  <div class="row"><strong>Net Balance:</strong> <span>₹${data.totalBalance.toLocaleString('en-IN')}</span></div>
+                <div class="summary-cards">
+                    <div class="card">
+                        <div class="card-label">Total Income</div>
+                        <div class="card-value income">₹${data.totalInc.toLocaleString('en-IN')}</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-label">Total Expense</div>
+                        <div class="card-value expense">₹${data.totalExp.toLocaleString('en-IN')}</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-label">Net Balance</div>
+                        <div class="card-value balance">₹${data.totalBalance.toLocaleString('en-IN')}</div>
+                    </div>
                 </div>
 
-                <h2>Category Breakdown</h2>
-                <table class="table">
-                  <thead>
-                    <tr>
-                      <th>Category</th>
-                      <th>Transactions</th>
-                      <th>Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${data.pieData.map(c => `
-                      <tr>
-                        <td>${c.name}</td>
-                        <td>${c.count}</td>
-                        <td>₹${c.amount.toLocaleString('en-IN')}</td>
-                      </tr>
-                    `).join('')}
-                  </tbody>
-                </table>
+                <h2 class="section-title">Visual Overview</h2>
+                <div class="charts-row">
+                    <!-- Bar Chart -->
+                    <div class="bar-container">
+                        <div class="bar-group">
+                             <div class="bar" style="height: ${incPct}%; background: #10b981;">
+                                <div class="bar-value">₹${(data.totalInc/1000).toFixed(1)}k</div>
+                             </div>
+                             <div class="bar-label">Income</div>
+                        </div>
+                        <div class="bar-group">
+                             <div class="bar" style="height: ${expPct}%; background: #ef4444;">
+                                <div class="bar-value">₹${(data.totalExp/1000).toFixed(1)}k</div>
+                             </div>
+                             <div class="bar-label">Expense</div>
+                        </div>
+                    </div>
+
+                    <!-- Pie Chart -->
+                     <div style="flex: 1; display: flex; justify-content: center; align-items: center;">
+                        <div class="pie-container" style="${pieStyle}">
+                            <div class="pie-hole">
+                                <div class="pie-total-label">Total Exp</div>
+                                <div class="pie-total-value">₹${(data.totalExp/1000).toFixed(1)}k</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <h2 class="section-title">Expense Breakdown</h2>
+                <div class="cat-list">
+                    ${data.pieData.map(item => {
+                        const pct = data.totalExp > 0 ? (item.amount / data.totalExp) * 100 : 0;
+                        return `
+                        <div class="cat-row">
+                            <div class="cat-icon" style="background: ${item.color}"></div>
+                            <div class="cat-info">
+                                <div class="cat-name">${item.name}</div>
+                                <div class="cat-meta">${item.count} transactions</div>
+                            </div>
+                            <div class="cat-amount">₹${item.amount.toLocaleString('en-IN')}</div>
+                            <div class="cat-pct">${pct.toFixed(1)}%</div>
+                        </div>
+                        `;
+                    }).join('')}
+                </div>
+
+                <div class="footer">
+                    <div class="footer-info">
+                        Generated by ${settings.admin_name}<br/>
+                        ${settings.admin_role}<br/>
+                        ${new Date().toLocaleString()}
+                    </div>
+                    <div class="watermark">
+                        Confidential • Internal Use Only
+                    </div>
+                </div>
               </body>
             </html>
           `;

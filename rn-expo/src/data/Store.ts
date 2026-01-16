@@ -349,28 +349,37 @@ export const Store = {
   async runScheduledBackupIfDue() {
     if (Platform.OS === 'web') return;
     const currentSettings = this.getSettings();
-    if (!currentSettings.backup_enabled) return;
+    if (!currentSettings.backup_enabled) {
+        console.log("AutoBackup: Disabled in settings");
+        return;
+    }
 
     const now = new Date();
     const lastRun = currentSettings.backup_last_run ? new Date(currentSettings.backup_last_run) : null;
-    const frequency = currentSettings.backup_frequency || 'monthly';
+    const frequency = currentSettings.backup_frequency || 'daily';
     const backupTime = currentSettings.backup_time || "00:00";
 
     const [th, tm] = backupTime.split(':').map(Number);
     
     let shouldRun = false;
 
+    console.log(`AutoBackup Check: Now=${now.toISOString()}, LastRun=${lastRun?.toISOString()}, Freq=${frequency}, Time=${backupTime}`);
+
     if (!lastRun) {
         // First run: only if we are past the scheduled time today
         const targetTimeToday = new Date(now);
         targetTimeToday.setHours(th, tm, 0, 0);
+        console.log(`AutoBackup: First run check. Target=${targetTimeToday.toISOString()}`);
         if (now >= targetTimeToday) {
             shouldRun = true;
+            console.log("AutoBackup: Triggering first run (past target time)");
         }
     } else {
         // Calculate next scheduled run based on last run
         const nextRun = new Date(lastRun);
-        nextRun.setHours(th, tm, 0, 0); // Align to target time of day
+        // Important: Ensure we respect the user's preferred time for the next run
+        // We set the time on the *next* date, not the last run date
+        nextRun.setHours(th, tm, 0, 0); 
         
         if (frequency === 'daily') {
             nextRun.setDate(nextRun.getDate() + 1);
@@ -381,16 +390,24 @@ export const Store = {
             nextRun.setMonth(nextRun.getMonth() + 1);
         }
         
+        console.log(`AutoBackup: Next scheduled run is ${nextRun.toISOString()}`);
+
         // If we are past the next scheduled run, do it
         if (now >= nextRun) {
             shouldRun = true;
+            console.log("AutoBackup: Triggering scheduled run (overdue)");
         }
     }
 
-    if (!shouldRun) return;
+    if (!shouldRun) {
+        console.log("AutoBackup: Not due yet");
+        return;
+    }
 
+    console.log("AutoBackup: Starting backup loop...");
     await this._executeBackupLoop(`Auto ${frequency}`);
     await this.setSettings({ backup_last_run: now.toISOString() });
+    console.log("AutoBackup: Backup loop completed and settings updated");
   },
 
   async runManualBackupNow() {

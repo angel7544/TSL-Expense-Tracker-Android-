@@ -155,6 +155,13 @@ export default function App() {
             setIsLocked(true);
         }
         await Store.runScheduledBackupIfDue();
+        
+        // Start a timer to check for backup due time every minute while app is open
+        const backupTimer = setInterval(() => {
+            Store.runScheduledBackupIfDue().catch(console.error);
+        }, 60000); // Check every minute
+        
+        return () => clearInterval(backupTimer);
       } catch (e) {
         console.warn(e);
       } finally {

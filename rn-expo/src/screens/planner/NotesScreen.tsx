@@ -31,7 +31,7 @@ export const NotesScreen = () => {
             content: currentNote.content || "",
             created_at: currentNote.created_at || new Date().toISOString(),
             image_uri: currentNote.image_uri,
-            is_important: currentNote.is_important
+            is_important: !!currentNote.is_important
         });
         setModalVisible(false);
         setCurrentNote({});
@@ -74,7 +74,7 @@ export const NotesScreen = () => {
     };
 
     const renderItem = ({ item }: { item: Note }) => (
-        <TouchableOpacity onPress={() => openNote(item)} style={[styles.card, item.is_important && styles.cardImportant]}>
+        <TouchableOpacity onPress={() => openNote(item)} style={[styles.card, !!item.is_important && styles.cardImportant]}>
             {item.image_uri && (
                 <Image source={{ uri: item.image_uri }} style={styles.cardImage} />
             )}

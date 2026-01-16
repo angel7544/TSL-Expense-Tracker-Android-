@@ -164,6 +164,10 @@ export default function SettingsScreen({ navigation }: any) {
       const newSettings = { ...settings, backup_enabled: value };
       setSettings(newSettings);
       Store.setSettings(newSettings);
+      if (value) {
+          // Check immediately if we should run a backup
+          setTimeout(() => Store.runScheduledBackupIfDue(), 1000);
+      }
   };
 
   const changeBackupFrequency = (value: 'daily' | 'weekly' | 'monthly') => {
@@ -176,6 +180,8 @@ export default function SettingsScreen({ navigation }: any) {
       const newSettings = { ...settings, backup_time: value };
       setSettings(newSettings);
       Store.setSettings(newSettings);
+      // Check if the new time makes it due immediately
+      setTimeout(() => Store.runScheduledBackupIfDue(), 1000);
   };
 
   const manualBackupNow = async () => {
