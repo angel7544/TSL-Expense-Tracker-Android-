@@ -207,11 +207,14 @@ export const InvoicesScreen = () => {
                   @page { size: ${settings.pdf_page_size || 'A4'}; margin: 0; }
                   body { font-family: 'Helvetica', sans-serif; margin: 0; padding: 0; color: #333; }
                   
-                  .header { background-color: #047857; color: white; padding: 40px; display: flex; justify-content: space-between; align-items: flex-start; }
+                  .header { background-color: #047857; color: white; padding: 40px; display: flex; justify-content: space-between; align-items: flex-start; position: relative; }
                   .logo-area img { max-height: 80px; margin-bottom: 10px; background: white; padding: 5px; border-radius: 4px; }
                   .header-title { font-size: 48px; font-weight: bold; letter-spacing: 2px; margin: 0; }
                   .header-details { text-align: right; }
                   .header-details p { margin: 2px 0; font-size: 14px; opacity: 0.9; }
+                  .status-stamp { position: absolute; top: 24px; right: 40px; padding: 8px 18px; border: 3px solid; border-radius: 4px; font-size: 20px; font-weight: bold; text-transform: uppercase; transform: rotate(-15deg); background-color: rgba(255,255,255,0.9); opacity: 0.9; }
+                  .status-stamp.paid { color: #b91c1c; border-color: #b91c1c; }
+                  .status-stamp.due { color: #ea580c; border-color: #ea580c; }
                   
                   .content { padding: 40px; }
                   
@@ -233,8 +236,10 @@ export const InvoicesScreen = () => {
                   .totals-row.final { background-color: #047857; color: white; padding: 12px; font-weight: bold; font-size: 16px; margin-top: 10px; border-radius: 4px; }
                   
                   .footer { position: fixed; bottom: 40px; width: 100%; text-align: center; font-size: 12px; color: #6b7280; }
-                  .signature-section { margin-top: 50px; }
-                  .signature-img { max-height: 60px; }
+                  .signature-section { margin-top: 50px; text-align: right; }
+                  .signature-img { max-height: 60px; display: block; margin-left: auto; margin-bottom: 6px; }
+                  .signature-name { font-family: cursive; font-size: 18px; display: block; text-align: right; margin-bottom: 6px; }
+                  .signature-label { border-top: 1px solid #ccc; display: inline-block; padding-top: 5px; font-size: 10px; text-transform: uppercase; }
                 </style>
               </head>
               <body>
@@ -248,6 +253,7 @@ export const InvoicesScreen = () => {
                     <p>INVOICE DATE: ${inv.invoice_date}</p>
                     ${inv.due_date ? `<p>DUE DATE: ${inv.due_date}</p>` : ''}
                   </div>
+                  ${inv.status === 'paid' ? `<div class="status-stamp paid">PAID</div>` : inv.status === 'sent' ? `<div class="status-stamp due">DUE</div>` : ''}
                 </div>
 
                 <div class="content">
@@ -283,7 +289,10 @@ export const InvoicesScreen = () => {
                             ${items.map((item, i) => `
                                 <tr>
                                     <td>${i + 1}</td>
-                                    <td>${item.description}</td>
+                                    <td>
+                                        ${item.name ? `<div style="font-weight: 600;">${item.name}</div>` : ''}
+                                        ${item.description ? `<div style="font-size: 12px; color: #6b7280;">${item.description}</div>` : ''}
+                                    </td>
                                     <td style="text-align: center">${item.quantity}</td>
                                     <td style="text-align: right">₹${Number(item.amount).toFixed(2)}</td>
                                     <td style="text-align: right">₹${(Number(item.amount) * Number(item.quantity)).toFixed(2)}</td>
@@ -318,9 +327,9 @@ export const InvoicesScreen = () => {
                     <div class="signature-section">
                         ${settings.admin_signature_image ? 
                             `<img src="${settings.admin_signature_image}" class="signature-img" />` : 
-                            `<p style="font-family: cursive; font-size: 18px;">${settings.admin_signature || settings.admin_name}</p>`
+                            `<p class="signature-name">${settings.admin_signature || settings.admin_name}</p>`
                         }
-                        <p style="border-top: 1px solid #ccc; display: inline-block; padding-top: 5px; font-size: 10px; text-transform: uppercase;">Authorized Signature</p>
+                        <p class="signature-label">Authorized Signature</p>
                     </div>
                 </div>
 
@@ -353,6 +362,7 @@ export const InvoicesScreen = () => {
     const handleImportRecord = (record: ExpenseRecord) => {
         const amount = record.income_amount || 0;
         const newItem: InvoiceItem = {
+            name: record.expense_category,
             description: record.expense_description || record.expense_category,
             amount: amount,
             quantity: 1
@@ -493,6 +503,16 @@ export const InvoicesScreen = () => {
                                 <View style={{ flex: 1 }}>
                                     <TextInput 
                                         style={[styles.input, { marginBottom: 4 }]} 
+                                        placeholder="Item Name"
+                                        value={item.name || ''}
+                                        onChangeText={t => {
+                                            const newItems = [...invoiceItems];
+                                            newItems[index].name = t;
+                                            setInvoiceItems(newItems);
+                                        }}
+                                    />
+                                    <TextInput 
+                                        style={[styles.input, { marginBottom: 4 }]} 
                                         placeholder="Description"
                                         value={item.description}
                                         onChangeText={t => {
@@ -538,7 +558,7 @@ export const InvoicesScreen = () => {
 
                         <TouchableOpacity 
                             style={styles.addItemBtn} 
-                            onPress={() => setInvoiceItems([...invoiceItems, { description: '', quantity: 1, amount: 0 }])}
+                            onPress={() => setInvoiceItems([...invoiceItems, { name: '', description: '', quantity: 1, amount: 0 }])}
                         >
                             <Text style={styles.addItemBtnText}>+ Add Item</Text>
                         </TouchableOpacity>

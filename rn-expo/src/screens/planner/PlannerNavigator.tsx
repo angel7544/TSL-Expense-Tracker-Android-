@@ -75,14 +75,7 @@ export const PlannerNavigator = () => {
                     tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "receipt" : "receipt-outline"} size={20} color={color} />
                 }}
             />
-            <Tab.Screen
-                name="PlannerSettings"
-                component={SettingsScreen}
-                options={{
-                    title: "Settings",
-                    tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "settings" : "settings-outline"} size={20} color={color} />
-                }}
-            />
+            
         </Tab.Navigator>
     );
 };

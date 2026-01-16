@@ -68,6 +68,7 @@ export interface Invoice {
 }
 
 export interface InvoiceItem {
+    name?: string;
     description: string;
     amount: number;
     quantity: number;
