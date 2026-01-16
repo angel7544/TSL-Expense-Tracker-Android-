@@ -49,6 +49,30 @@ export interface ExpenseRecord {
   bal?: number;
 }
 
+export interface Invoice {
+  id?: number;
+  invoice_number: string;
+  client_name: string;
+  client_address: string;
+  client_phone: string;
+  client_gst?: string;
+  invoice_date: string;
+  due_date?: string;
+  items: string; // JSON string of InvoiceItem[]
+  total_amount: number;
+  subtotal?: number;
+  discount?: number;
+  tax_rate?: number;
+  tax_amount?: number;
+  status: 'draft' | 'paid' | 'sent';
+}
+
+export interface InvoiceItem {
+    description: string;
+    amount: number;
+    quantity: number;
+}
+
 export interface Settings {
     biometrics_enabled: boolean | undefined;
     lock_enabled: boolean | undefined;
@@ -61,6 +85,8 @@ export interface Settings {
     company_name: string;
     company_logo: string;
     company_contact: string;
+    company_gst?: string;
+    company_address?: string;
     pdf_page_size: 'A4' | 'A5';
     default_view: 'finance' | 'planner';
     backup_enabled?: boolean;
@@ -87,6 +113,8 @@ const defaultSettings: Settings = {
   company_name: "The Space Lab",
   company_logo: "",
   company_contact: "",
+  company_gst: "",
+  company_address: "",
   pdf_page_size: 'A4',
   biometrics_enabled: false,
   lock_enabled: undefined,
@@ -252,7 +280,35 @@ export const Store = {
         await db.execAsync("ALTER TABLE notes ADD COLUMN is_important INTEGER;");
       } catch (e) { /* ignore */ }
 
-    } else {
+      // Create Invoices Table
+      await db.execAsync(
+         `CREATE TABLE IF NOT EXISTS invoices (
+             id INTEGER PRIMARY KEY AUTOINCREMENT,
+             invoice_number TEXT,
+             client_name TEXT,
+             client_address TEXT,
+             client_phone TEXT,
+             client_gst TEXT,
+             invoice_date TEXT,
+             due_date TEXT,
+             items TEXT,
+             total_amount REAL,
+             subtotal REAL,
+             discount REAL,
+             tax_rate REAL,
+             tax_amount REAL,
+             status TEXT
+         );`
+       ).catch(err => console.error("DB Init Error (invoices)", err));
+
+       // Migrations for Invoices
+       try { await db.execAsync("ALTER TABLE invoices ADD COLUMN client_gst TEXT;"); } catch (e) { /* ignore */ }
+       try { await db.execAsync("ALTER TABLE invoices ADD COLUMN subtotal REAL;"); } catch (e) { /* ignore */ }
+       try { await db.execAsync("ALTER TABLE invoices ADD COLUMN discount REAL;"); } catch (e) { /* ignore */ }
+       try { await db.execAsync("ALTER TABLE invoices ADD COLUMN tax_rate REAL;"); } catch (e) { /* ignore */ }
+       try { await db.execAsync("ALTER TABLE invoices ADD COLUMN tax_amount REAL;"); } catch (e) { /* ignore */ }
+ 
+     } else {
       webRecords = [];
     }
     this.notify();
@@ -1026,5 +1082,59 @@ export const Store = {
           await db.runAsync("DELETE FROM notes WHERE id = ?", [id]);
           this.notify();
       } catch (e) { console.error("deleteNote", e); }
+  },
+
+  // --- Invoices ---
+  async getInvoices(): Promise<Invoice[]> {
+    if (Platform.OS === 'web' || !db) return [];
+    try {
+        const result = await db.getAllAsync<Invoice>(`SELECT * FROM invoices ORDER BY id DESC`);
+        return result;
+    } catch (e) {
+        console.error("Failed to get invoices", e);
+        return [];
+    }
+  },
+
+  async addInvoice(inv: Invoice) {
+    if (Platform.OS === 'web') return;
+    if (!db) return;
+    try {
+      await db.runAsync(
+        `INSERT INTO invoices (invoice_number, client_name, client_address, client_phone, client_gst, invoice_date, due_date, items, total_amount, subtotal, discount, tax_rate, tax_amount, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+            inv.invoice_number,
+            inv.client_name,
+            inv.client_address,
+            inv.client_phone,
+            inv.client_gst || "",
+            inv.invoice_date,
+            inv.due_date || "",
+            inv.items,
+            inv.total_amount,
+            inv.subtotal || 0,
+            inv.discount || 0,
+            inv.tax_rate || 0,
+            inv.tax_amount || 0,
+            inv.status
+        ]
+      );
+      this.notify();
+    } catch (e) {
+      console.error("Failed to add invoice", e);
+      throw e;
+    }
+  },
+
+  async deleteInvoice(id: number) {
+    if (Platform.OS === 'web') return;
+    if (!db) return;
+    try {
+        await db.runAsync("DELETE FROM invoices WHERE id = ?", [id]);
+        this.notify();
+    } catch (e) {
+        console.error("Failed to delete invoice", e);
+    }
   }
 };

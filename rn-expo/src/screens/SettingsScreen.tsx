@@ -263,6 +263,22 @@ export default function SettingsScreen({ navigation }: any) {
             </View>
         </View>
         <View style={styles.separator} />
+
+        <View style={styles.fieldRow}>
+            <View style={styles.fieldIcon}>
+                <Ionicons name="location-outline" size={20} color="#4F46E5" />
+            </View>
+            <View style={{ flex: 1 }}>
+                <Text style={styles.fieldLabel}>Company Address</Text>
+                <TextInput 
+                    value={settings.company_address} 
+                    onChangeText={t => updateSetting("company_address", t)} 
+                    style={styles.cleanInput} 
+                    placeholder="Address"
+                />
+            </View>
+        </View>
+        <View style={styles.separator} />
         
         <View style={styles.fieldRow}>
             <View style={styles.fieldIcon}>
@@ -307,6 +323,22 @@ export default function SettingsScreen({ navigation }: any) {
                     onChangeText={t => updateSetting("company_contact", t)} 
                     style={styles.cleanInput} 
                     placeholder="Email or Phone"
+                />
+            </View>
+        </View>
+        <View style={styles.separator} />
+
+        <View style={styles.fieldRow}>
+            <View style={styles.fieldIcon}>
+                <Ionicons name="receipt-outline" size={20} color="#4F46E5" />
+            </View>
+            <View style={{ flex: 1 }}>
+                <Text style={styles.fieldLabel}>Company GSTIN</Text>
+                <TextInput 
+                    value={settings.company_gst} 
+                    onChangeText={t => updateSetting("company_gst", t)} 
+                    style={styles.cleanInput} 
+                    placeholder="GST Number"
                 />
             </View>
         </View>

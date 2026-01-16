@@ -11,6 +11,7 @@ import {
   Image
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Store } from '../data/Store';
 
 interface OnboardingItem {
   id: string;
@@ -18,29 +19,45 @@ interface OnboardingItem {
   description: string;
   icon: keyof typeof Ionicons.glyphMap;
   color: string;
+  useLogo?: boolean;
 }
 
 const slides: OnboardingItem[] = [
   {
     id: '1',
-    title: 'Welcome to BR31 Finance',
-    description: 'Your complete offline finance system – secure, private, and yours forever.',
-    icon: 'wallet',
-    color: '#4F46E5', // Indigo
+    title: 'Welcome • Offline & Private',
+    description: 'Your data stays on-device.\nEnable PIN/Biometric lock for local security.',
+    icon: 'shield-checkmark',
+    color: '#4F46E5',
+    useLogo: true
   },
   {
     id: '2',
-    title: 'Your Data Stays With You',
-    description: 'No cloud, No internet, No tracking.\nAll your data stays safely on your device.',
-    icon: 'shield-checkmark',
-    color: '#8B5CF6', // Purple
+    title: 'Track Income, Expenses & Budgets',
+    description: 'Add records, filter & summarize.\nBudgets and splits; import CSV/XLSX; export CSV.',
+    icon: 'stats-chart',
+    color: '#2563EB',
   },
   {
     id: '3',
-    title: 'Track Finances & Generate Reports',
-    description: 'Analyze expenses, export data, and manage your finances on mobile & desktop.',
-    icon: 'stats-chart',
-    color: '#10B981', // Emerald
+    title: 'Smart Invoicing (INR + GST)',
+    description: 'Create from income, add client & GSTIN.\nINR totals, logo/signature, local PDF & sharing.',
+    icon: 'receipt',
+    color: '#10B981',
+  },
+  {
+    id: '4',
+    title: 'Reports & Charts',
+    description: 'Analysis PDFs with branding & watermark.\nCharts report, A4/A5, share instantly.',
+    icon: 'document-text',
+    color: '#8B5CF6',
+  },
+  {
+    id: '5',
+    title: 'Backups • Multi‑DB • Speed',
+    description: 'Create/restore JSON backups, scheduled auto‑backup.\nSwitch databases. Fast SQLite offline.',
+    icon: 'flash',
+    color: '#F59E0B',
   },
 ];
 
@@ -53,6 +70,7 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
   const [currentIndex, setCurrentIndex] = useState(0);
   const scrollX = useRef(new Animated.Value(0)).current;
   const slidesRef = useRef<FlatList>(null);
+  const settings = Store.getSettings();
 
   const viewableItemsChanged = useRef(({ viewableItems }: any) => {
     if (viewableItems && viewableItems.length > 0) {
@@ -74,7 +92,11 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
     return (
       <View style={[styles.slide, { width }]}>
         <View style={[styles.imageContainer, { backgroundColor: item.color + '20' }]}>
-            <Ionicons name={item.icon} size={100} color={item.color} />
+            {item.useLogo && settings?.company_logo ? (
+                <Image source={{ uri: settings.company_logo }} style={{ width: 140, height: 140, borderRadius: 70, backgroundColor: '#fff' }} resizeMode="contain" />
+            ) : (
+                <Ionicons name={item.icon} size={100} color={item.color} />
+            )}
         </View>
 
         <View style={styles.textContainer}>

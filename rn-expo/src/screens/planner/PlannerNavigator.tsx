@@ -8,6 +8,7 @@ import SettingsScreen from '../SettingsScreen';
 import { BudgetsScreen } from './BudgetsScreen';
 import { TodosScreen } from './TodosScreen';
 import { NotesScreen } from './NotesScreen';
+import { InvoicesScreen } from './InvoicesScreen';
 
 const Tab = createMaterialTopTabNavigator();
 
@@ -20,6 +21,7 @@ export const PlannerNavigator = () => {
             tabBarPosition="bottom"
             screenOptions={{
                 tabBarShowLabel: true,
+                tabBarScrollEnabled: true,
                 tabBarIndicatorStyle: {
                     backgroundColor: '#4F46E5',
                     height: 3,
@@ -64,6 +66,13 @@ export const PlannerNavigator = () => {
                 component={NotesScreen} 
                 options={{
                     tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "document-text" : "document-text-outline"} size={20} color={color} />
+                }}
+            />
+            <Tab.Screen 
+                name="Invoices" 
+                component={InvoicesScreen} 
+                options={{
+                    tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "receipt" : "receipt-outline"} size={20} color={color} />
                 }}
             />
             <Tab.Screen
