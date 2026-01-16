@@ -68,6 +68,7 @@ export interface Settings {
     backup_time?: string;
     backup_last_run?: string;
     primary_db?: string;
+    onboarding_completed?: boolean;
 }
 
 export interface FilterOptions {
@@ -95,7 +96,8 @@ const defaultSettings: Settings = {
   backup_frequency: 'monthly',
   backup_time: "00:00",
   backup_last_run: "",
-  primary_db: "tsl_expenses.db"
+  primary_db: "tsl_expenses.db",
+  onboarding_completed: false
 };
 
 function toBal(r: ExpenseRecord) {

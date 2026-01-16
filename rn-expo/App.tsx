@@ -17,6 +17,7 @@ import BackupScreen from "./src/screens/BackupScreen";
 import LockScreen from "./src/screens/LockScreen";
 import { PlannerNavigator } from "./src/screens/planner/PlannerNavigator";
 import { NotificationService } from "./src/services/NotificationService";
+import OnboardingScreen from "./src/screens/OnboardingScreen";
 
 const CustomTabBarButton = ({ children, onPress }: any) => (
     <TouchableOpacity
@@ -134,6 +135,7 @@ export default function App() {
   const [isLocked, setIsLocked] = useState(false);
   const appState = useRef(AppState.currentState);
   const [appMode, setAppMode] = useState(Store.appMode);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     async function prepare() {
@@ -154,6 +156,11 @@ export default function App() {
         if (Store.isAuthenticated && Store.settings.lock_enabled) {
             setIsLocked(true);
         }
+        
+        if (!Store.settings.onboarding_completed) {
+            setShowOnboarding(true);
+        }
+
         await Store.runScheduledBackupIfDue();
         
         // Start a timer to check for backup due time every minute while app is open
@@ -210,10 +217,20 @@ export default function App() {
       return <LockScreen onUnlock={() => setIsLocked(false)} />;
   }
 
+  if (showOnboarding) {
+      return <OnboardingScreen onComplete={() => {
+          Store.setSettings({ onboarding_completed: true });
+          setShowOnboarding(false);
+      }} />;
+  }
+
   const Tab = createMaterialTopTabNavigator();
   
   return (
-    <UIContext.Provider value={{ showAddModal: () => setAddModalVisible(true) }}>
+    <UIContext.Provider value={{ 
+        showAddModal: () => setAddModalVisible(true),
+        showOnboarding: () => setShowOnboarding(true)
+    }}>
         <NavigationContainer>
         {appMode === 'planner' ? (
             <PlannerNavigator />
@@ -299,3 +316,4 @@ export default function App() {
     </UIContext.Provider>
   );
 }
+

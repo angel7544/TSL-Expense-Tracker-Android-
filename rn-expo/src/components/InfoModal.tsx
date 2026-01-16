@@ -46,8 +46,8 @@ export const InfoModal = ({ visible, onClose, logoUri }: InfoModalProps) => {
                     </TouchableOpacity>
 
                     {logoUri && <Image source={{ uri: logoUri }} style={styles.modalLogo} />}
-                    <Text style={styles.modalTitle}>BR31 Expense Tracker</Text>
-                    <Text style={styles.modalVersion}>Version 2.5.0</Text>
+                    <Text style={styles.modalTitle}>Expense Tracker</Text>
+                    <Text style={styles.modalVersion}>Version 3.4.0</Text>
                     
                     <View style={styles.modeContainer}>
                         <Text style={styles.modeLabel}>Planner Mode</Text>

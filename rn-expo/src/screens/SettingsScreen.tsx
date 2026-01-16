@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, TextInput, TouchableOpacity, Alert, ScrollView, StyleSheet, Platform, Image, Dimensions, KeyboardAvoidingView, Switch } from "react-native";
+import React, { useState, useEffect, useContext } from "react";
+import { View, Text, TextInput, TouchableOpacity, Alert, ScrollView, StyleSheet, Platform, Image, Dimensions, KeyboardAvoidingView, Switch, GestureResponderEvent } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
@@ -11,10 +11,12 @@ import { ImportExport } from "../services/ImportExport";
 import { AppHeader } from "../components/AppHeader";
 import { InputModal } from "../components/InputModal";
 import { InfoModal } from "../components/InfoModal";
+import { UIContext } from "../context/UIContext";
 
 const { width, height } = Dimensions.get("window");
 
 export default function SettingsScreen({ navigation }: any) {
+  const { showOnboarding } = useContext(UIContext);
   const [settings, setSettings] = useState(Store.getSettings());
   const [pass, setPass] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(Store.isAuthenticated);
@@ -232,6 +234,7 @@ export default function SettingsScreen({ navigation }: any) {
       <AppHeader title="Settings" subtitle="App Preferences" />
       <ScrollView 
         style={{ flex: 1, padding: 20 }}
+        contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
         showsHorizontalScrollIndicator={false}
       >
@@ -634,13 +637,20 @@ export default function SettingsScreen({ navigation }: any) {
           </TouchableOpacity>
       </View>
       
-      <View style={{ height: 60 }} />
+      <View style={{ height: 10 }} />
 
       {isAuthenticated && (
-          <TouchableOpacity onPress={logout} style={[styles.saveButton, { backgroundColor: '#EF4444', marginTop: 10, marginBottom: 40, flexDirection: 'row', justifyContent: 'center' }]}>
-              <Text style={styles.saveButtonText}>LOG OUT</Text>
-              <Ionicons name="log-out-outline" size={20} color="#fff" style={{marginLeft: 8}} />
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity onPress={logout} style={[styles.saveButton, { backgroundColor: '#EF4444', marginTop: 10, marginBottom: 10, flexDirection: 'row', justifyContent: 'center' }]}>
+                <Text style={styles.saveButtonText}>LOG OUT</Text>
+                <Ionicons name="log-out-outline" size={20} color="#fff" style={{marginLeft: 8}} />
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={showOnboarding} style={[styles.saveButton, { backgroundColor: '#8B5CF6', marginTop: 10, marginBottom: 0, flexDirection: 'row', justifyContent: 'center' }]}>
+                <Text style={styles.saveButtonText}>APP TOUR</Text>
+                <Ionicons name="help-circle-outline" size={20} color="#fff" style={{marginLeft: 8}} />
+            </TouchableOpacity>
+          </>
       )}
 
       </ScrollView>
