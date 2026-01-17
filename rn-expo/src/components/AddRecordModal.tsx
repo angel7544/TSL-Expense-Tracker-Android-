@@ -239,34 +239,35 @@ export const AddRecordModal = ({ visible, onClose, onSave, record }: AddRecordMo
   };
 
   const save = async () => {
-    const data = {
-        ...form,
-        income_amount: Number(form.income_amount),
-        expense_amount: Number(form.expense_amount)
-    };
+    try {
+        const data = {
+            ...form,
+            income_amount: Number(form.income_amount),
+            expense_amount: Number(form.expense_amount)
+        };
 
-    if (record && record.id) {
-        await Store.update({ ...data, id: record.id });
-    } else {
-        await Store.add(data);
-    }
-    
-    // Reset form is handled by useEffect on next open or explicit reset if needed
-    // But since we close modal, next open will reset or load new record
-    
-    onSave(); 
-    
-    if (!record) { // Only prompt backup on new records
-        Alert.alert(
-            "Record Saved",
-            "Do you want to backup your data to storage now?",
-            [
-                { text: "No", style: "cancel", onPress: onClose },
-                { text: "Yes, Backup", onPress: () => { backupToStorage(); onClose(); } }
-            ]
-        );
-    } else {
-        onClose();
+        if (record && record.id) {
+            await Store.update({ ...data, id: record.id });
+        } else {
+            await Store.add(data);
+        }
+        
+        onSave(); 
+        
+        if (!record) { // Only prompt backup on new records
+            Alert.alert(
+                "Record Saved",
+                "Do you want to backup your data to storage now?",
+                [
+                    { text: "No", style: "cancel", onPress: onClose },
+                    { text: "Yes, Backup", onPress: () => { backupToStorage(); onClose(); } }
+                ]
+            );
+        } else {
+            onClose();
+        }
+    } catch (e: any) {
+        Alert.alert("Error", "Failed to save record: " + e.message);
     }
   };
 

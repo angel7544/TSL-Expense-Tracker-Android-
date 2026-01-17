@@ -894,6 +894,52 @@ export const Store = {
       } catch (e) { console.error("getWalletStats", e); return { income: 0, expense: 0 }; }
   },
 
+  async getMostlyUsedWallet(year: string, month: string): Promise<{name: string, count: number} | null> {
+    if (Platform.OS === 'web' || !db) return null;
+    try {
+        let query = `
+            SELECT paid_through as name, COUNT(*) as count 
+            FROM expenses 
+            WHERE paid_through IS NOT NULL 
+            AND paid_through != ''
+        `;
+        const args: string[] = [];
+        
+        if (year !== "All") {
+            query += " AND strftime('%Y', expense_date) = ?";
+            args.push(year);
+        }
+        if (month !== "All") {
+            query += " AND strftime('%m', expense_date) = ?";
+            args.push(month);
+        }
+        
+        query += " GROUP BY paid_through ORDER BY count DESC LIMIT 1";
+        
+        const res = await db.getAllAsync<{name: string, count: number}>(query, args);
+        if (res.length > 0) return res[0];
+        return null;
+    } catch (e) { console.error("getMostlyUsedWallet", e); return null; }
+  },
+
+  async getAllTimeWalletStats(walletName: string): Promise<{ income: number, expense: number }> {
+      if (Platform.OS === 'web' || !db) return { income: 0, expense: 0 };
+      try {
+          const res = await db.getAllAsync<{ inc: number, exp: number }>(
+              `SELECT 
+                SUM(income_amount) as inc, 
+                SUM(expense_amount) as exp 
+               FROM expenses 
+               WHERE paid_through = ? COLLATE NOCASE`,
+              [walletName]
+          );
+          if (res && res.length > 0) {
+              return { income: res[0].inc || 0, expense: res[0].exp || 0 };
+          }
+          return { income: 0, expense: 0 };
+      } catch (e) { console.error("getAllTimeWalletStats", e); return { income: 0, expense: 0 }; }
+  },
+
   async summaryAsync(filters: FilterOptions) {
     const d = await this.list(filters);
     const inc = d.reduce((s, x) => s + Number(x.income_amount || 0), 0);
@@ -937,6 +983,7 @@ export const Store = {
             if (shouldNotify) this.notify();
         } catch (e) {
             console.error("Add Error", e);
+            throw e;
         }
     }
   },
@@ -986,6 +1033,7 @@ export const Store = {
             this.notify();
         } catch (e) {
             console.error("Update Error", e);
+            throw e;
         }
     }
   },

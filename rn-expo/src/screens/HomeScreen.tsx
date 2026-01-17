@@ -84,6 +84,10 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         .slice(0, 10); // Limit to 10
     setRecentRecords(filtered);
     
+    // 4. Get Mostly Used Wallet
+    const mostlyUsed = await Store.getMostlyUsedWallet(year, month);
+    setMostlyUsedWallet(mostlyUsed);
+    
     // Load recent files
     const recent = await Store.getRecentDatabases();
     setRecentFiles(recent);

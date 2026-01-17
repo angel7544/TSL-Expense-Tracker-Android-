@@ -6,7 +6,7 @@ import { UIContext } from '../../context/UIContext';
 
 const CARD_HEIGHT = 180;
 
-const WalletCard = ({ item, stats, theme, onEdit }: { item: Wallet, stats: { income: number, expense: number }, theme: any, onEdit: (w: Wallet) => void }) => {
+const WalletCard = ({ item, stats, allTimeStats, theme, onEdit }: { item: Wallet, stats: { income: number, expense: number }, allTimeStats: { income: number, expense: number }, theme: any, onEdit: (w: Wallet) => void }) => {
     const animatedValue = useRef(new Animated.Value(0)).current;
     const [flipped, setFlipped] = useState(false);
 
@@ -158,6 +158,36 @@ const WalletCard = ({ item, stats, theme, onEdit }: { item: Wallet, stats: { inc
             justifyContent: 'center',
             marginBottom: 12,
         },
+        backStatsRow: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            marginBottom: 20,
+            backgroundColor: theme.colors.background,
+            borderRadius: 12,
+            padding: 10,
+            width: '90%',
+        },
+        backStatItem: {
+            alignItems: 'center',
+            flex: 1,
+        },
+        backStatLabel: {
+            color: theme.colors.subtext,
+            fontSize: 10,
+            fontWeight: '600',
+            marginBottom: 4,
+            textTransform: 'uppercase',
+        },
+        backStatValue: {
+            color: theme.colors.text,
+            fontSize: 14,
+            fontWeight: '800',
+        },
+        backDivider: {
+            width: 1,
+            backgroundColor: theme.colors.border || 'rgba(0,0,0,0.1)',
+            marginHorizontal: 10,
+        },
     });
 
     return (
@@ -206,6 +236,18 @@ const WalletCard = ({ item, stats, theme, onEdit }: { item: Wallet, stats: { inc
             <Animated.View style={[styles.card, styles.cardBack, { transform: [{ rotateY: backInterpolate }] }]}>
                 <Text style={styles.backTitle}>Manage Wallet</Text>
                 
+                <View style={styles.backStatsRow}>
+                     <View style={styles.backStatItem}>
+                        <Text style={styles.backStatLabel}>Total Income</Text>
+                        <Text style={styles.backStatValue}>+{theme.currencySymbol || '₹'}{allTimeStats.income.toFixed(2)}</Text>
+                    </View>
+                    <View style={styles.backDivider} />
+                    <View style={styles.backStatItem}>
+                        <Text style={styles.backStatLabel}>Total Expense</Text>
+                        <Text style={styles.backStatValue}>-{theme.currencySymbol || '₹'}{allTimeStats.expense.toFixed(2)}</Text>
+                    </View>
+                </View>
+
                 <TouchableOpacity 
                     style={[styles.actionButton, { backgroundColor: theme.colors.primary + '20' }]}
                     onPress={() => onEdit(item)}
@@ -236,6 +278,7 @@ export const WalletsScreen = () => {
     const styles = useMemo(() => getStyles(theme), [theme]);
     const [wallets, setWallets] = useState<Wallet[]>([]);
     const [stats, setStats] = useState<Record<number, { income: number, expense: number }>>({});
+    const [allTimeStats, setAllTimeStats] = useState<Record<number, { income: number, expense: number }>>({});
     
     const [modalVisible, setModalVisible] = useState(false);
     const [currentWallet, setCurrentWallet] = useState<Partial<Wallet>>({});
@@ -254,16 +297,22 @@ export const WalletsScreen = () => {
         const month = (today.getMonth() + 1).toString().padStart(2, '0');
 
         const newStats: Record<number, { income: number, expense: number }> = {};
+        const newAllTimeStats: Record<number, { income: number, expense: number }> = {};
         
         await Promise.all(data.map(async (w) => {
             if (w.name) {
                 const s = await Store.getWalletStats(w.name, year, month);
-                if (w.id) newStats[w.id] = s;
+                const all = await Store.getAllTimeWalletStats(w.name);
+                if (w.id) {
+                    newStats[w.id] = s;
+                    newAllTimeStats[w.id] = all;
+                }
             }
         }));
 
         setWallets(data);
         setStats(newStats);
+        setAllTimeStats(newAllTimeStats);
     };
 
     const handleSave = async () => {
@@ -312,6 +361,7 @@ export const WalletsScreen = () => {
                     <WalletCard 
                         item={item} 
                         stats={stats[item.id!] || { income: 0, expense: 0 }} 
+                        allTimeStats={allTimeStats[item.id!] || { income: 0, expense: 0 }}
                         theme={theme}
                         onEdit={(w) => {
                             setCurrentWallet(w);
