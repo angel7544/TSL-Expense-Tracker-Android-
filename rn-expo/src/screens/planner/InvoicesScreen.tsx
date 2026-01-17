@@ -203,6 +203,13 @@ export const InvoicesScreen = () => {
             const userIcon = `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`;
             const taxIcon = `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>`;
 
+            const ITEMS_PER_PAGE = 8;
+            const pages = [];
+            for (let i = 0; i < items.length; i += ITEMS_PER_PAGE) {
+                pages.push(items.slice(i, i + ITEMS_PER_PAGE));
+            }
+            if (pages.length === 0) pages.push([]);
+
             const html = `
             <!DOCTYPE html>
             <html>
@@ -217,11 +224,12 @@ export const InvoicesScreen = () => {
                   .header-title { font-size: 48px; font-weight: bold; letter-spacing: 2px; margin: 0; }
                   .header-details { text-align: right; }
                   .header-details p { margin: 2px 0; font-size: 14px; opacity: 0.9; }
-                  .status-stamp { position: absolute; top: 24px; right: 40px; padding: 8px 18px; border: 3px solid; border-radius: 4px; font-size: 20px; font-weight: bold; text-transform: uppercase; transform: rotate(-15deg); background-color: rgba(255,255,255,0.9); opacity: 0.9; }
+                  .status-stamp { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-15deg); width: 128px; height: 128px; display: flex; align-items: center; justify-content: center; border: 8px solid; border-radius: 50%; font-size: 35px; font-weight: bold; text-transform: uppercase; background-color: rgba(255, 255, 255, 0.63); opacity: 0.8; z-index: 100; }
                   .status-stamp.paid { color: #b91c1c; border-color: #b91c1c; }
                   .status-stamp.due { color: #ea580c; border-color: #ea580c; }
                   
-                  .content { padding: 40px; }
+                  .content { padding: 40px 40px 40px 40px; }
+                  .page-container { min-height: 100vh; position: relative; }
                   
                   .info-row { display: flex; justify-content: space-between; margin-bottom: 40px; }
                   .info-col { width: 45%; }
@@ -240,109 +248,123 @@ export const InvoicesScreen = () => {
                   .totals-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; }
                   .totals-row.final { background-color: #047857; color: white; padding: 12px; font-weight: bold; font-size: 16px; margin-top: 10px; border-radius: 4px; }
                   
-                  .footer { position: fixed; bottom: 40px; width: 100%; text-align: center; font-size: 12px; color: #6b7280; }
+                  .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #6b7280; border-top: 1px solid #eee; padding-top: 20px; }
                   .signature-section { margin-top: 50px; text-align: right; }
-                  .signature-img { max-height: 60px; display: block; margin-left: auto; margin-bottom: 6px; }
+                  .signature-img { max-height: 60px; display: inline-block; margin-bottom: 6px; }
                   .signature-name { font-family: cursive; font-size: 18px; display: block; text-align: right; margin-bottom: 6px; }
                   .signature-label { border-top: 1px solid #ccc; display: inline-block; padding-top: 5px; font-size: 10px; text-transform: uppercase; }
                 </style>
               </head>
               <body>
-                <div class="header">
-                  <div class="logo-area">
-                    ${settings.company_logo ? `<img src="${settings.company_logo}" />` : ''}
-                  </div>
-                  <div class="header-details">
-                    <h1 class="header-title">INVOICE</h1>
-                    <p>INVOICE NO: ${inv.invoice_number}</p>
-                    <p>INVOICE DATE: ${inv.invoice_date}</p>
-                    ${inv.due_date ? `<p>DUE DATE: ${inv.due_date}</p>` : ''}
-                  </div>
-                  ${inv.status === 'paid' ? `<div class="status-stamp paid">PAID</div>` : inv.status === 'sent' ? `<div class="status-stamp due">DUE</div>` : ''}
-                </div>
-
-                <div class="content">
-                    <div class="info-row">
-                        <div class="info-col">
-                            <h3>From</h3>
-                            <p class="company-name">${settings.company_name}</p>
-                            ${settings.company_address ? `<p>${pinIcon} ${settings.company_address}</p>` : ''}
-                            <p>${phoneIcon} ${settings.company_contact}</p>
-                            <p>${userIcon} ${settings.admin_name}</p>
-                            ${settings.company_gst ? `<p>${taxIcon} GSTIN: ${settings.company_gst}</p>` : ''}
+                ${pages.map((pageItems, pageIndex) => {
+                    const isLastPage = pageIndex === pages.length - 1;
+                    return `
+                    <div class="page-container" style="${!isLastPage ? 'page-break-after: always;' : ''}">
+                        <div class="header">
+                          <div class="logo-area">
+                            ${settings.company_logo ? `<img src="${settings.company_logo}" />` : ''}
+                          </div>
+                          <div class="header-details">
+                            <h1 class="header-title">INVOICE</h1>
+                            <p>INVOICE NO: ${inv.invoice_number}</p>
+                            <p>INVOICE DATE: ${inv.invoice_date}</p>
+                            ${inv.due_date ? `<p>DUE DATE: ${inv.due_date}</p>` : ''}
+                          </div>
                         </div>
-                        <div class="info-col" style="text-align: right;">
-                            <h3>Billed To</h3>
-                            <p class="company-name">${inv.client_name}</p>
-                            <p>${pinIcon} ${inv.client_address}</p>
-                            <p>${phoneIcon} ${inv.client_phone}</p>
-                            ${inv.client_gst ? `<p>${taxIcon} GSTIN: ${inv.client_gst}</p>` : ''}
-                        </div>
-                    </div>
+                        ${(inv.status === 'paid' && pageIndex === 0) ? `<div class="status-stamp paid">PAID</div>` : (inv.status === 'sent' && pageIndex === 0) ? `<div class="status-stamp due">DUE</div>` : ''}
 
-                    <table>
-                        <thead>
-                            <tr>
-                                <th style="width: 5%">#</th>
-                                <th style="width: 45%">Product/Service</th>
-                                <th style="width: 15%; text-align: center">Qty</th>
-                                <th style="width: 15%; text-align: right">Unit Price</th>
-                                <th style="width: 20%; text-align: right">Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${items.map((item, i) => `
-                                <tr>
-                                    <td>${i + 1}</td>
-                                    <td>
-                                        ${item.name ? `<div style="font-weight: 600;">${item.name}</div>` : ''}
-                                        ${item.description ? `<div style="font-size: 12px; color: #6b7280;">${item.description}</div>` : ''}
-                                    </td>
-                                    <td style="text-align: center">${item.quantity}</td>
-                                    <td style="text-align: right">₹${Number(item.amount).toFixed(2)}</td>
-                                    <td style="text-align: right">₹${(Number(item.amount) * Number(item.quantity)).toFixed(2)}</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-
-                    <div class="totals-section">
-                        <div class="totals-table">
-                            <div class="totals-row">
-                                <span>Subtotal</span>
-                                <span>₹${subtotal.toFixed(2)}</span>
-                            </div>
-                            ${discount > 0 ? `
-                            <div class="totals-row">
-                                <span>Discount</span>
-                                <span>-₹${discount.toFixed(2)}</span>
+                        <div class="content">
+                            ${pageIndex === 0 ? `
+                            <div class="info-row">
+                                <div class="info-col">
+                                    <h3>From</h3>
+                                    <p class="company-name">${settings.company_name}</p>
+                                    ${settings.company_address ? `<p>${pinIcon} ${settings.company_address}</p>` : ''}
+                                    <p>${phoneIcon} ${settings.company_contact}</p>
+                                    ${settings.company_gst ? `<p>${taxIcon} GSTIN: ${settings.company_gst}</p>` : ''}
+                                </div>
+                                <div class="info-col" style="text-align: left;">
+                                    <h3>Billed To</h3>
+                                    <p class="company-name">${inv.client_name}</p>
+                                    <p>${pinIcon} ${inv.client_address}</p>
+                                    <p>${phoneIcon} ${inv.client_phone}</p>
+                                    ${inv.client_gst ? `<p>${taxIcon} GSTIN: ${inv.client_gst}</p>` : ''}
+                                </div>
                             </div>
                             ` : ''}
-                            <div class="totals-row">
-                                <span>Tax (GST ${taxRate}%)</span>
-                                <span>₹${taxAmount.toFixed(2)}</span>
+
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th style="width: 5%">#</th>
+                                        <th style="width: 45%">Product/Service</th>
+                                        <th style="width: 15%; text-align: center">Qty</th>
+                                        <th style="width: 15%; text-align: right">Unit Price</th>
+                                        <th style="width: 20%; text-align: right">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${pageItems.map((item, i) => `
+                                        <tr>
+                                            <td>${(pageIndex * ITEMS_PER_PAGE) + i + 1}</td>
+                                            <td>
+                                                ${item.name ? `<div style="font-weight: 600;">${item.name}</div>` : ''}
+                                                ${item.description ? `<div style="font-size: 12px; color: #6b7280;">${item.description}</div>` : ''}
+                                            </td>
+                                            <td style="text-align: center">${item.quantity}</td>
+                                            <td style="text-align: right">₹${Number(item.amount).toFixed(2)}</td>
+                                            <td style="text-align: right">₹${(Number(item.amount) * Number(item.quantity)).toFixed(2)}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+
+                            ${isLastPage ? `
+                            <div class="totals-section">
+                                <div class="totals-table">
+                                    <div class="totals-row">
+                                        <span>Subtotal</span>
+                                        <span>₹${subtotal.toFixed(2)}</span>
+                                    </div>
+                                    ${discount > 0 ? `
+                                    <div class="totals-row">
+                                        <span>Discount</span>
+                                        <span>-₹${discount.toFixed(2)}</span>
+                                    </div>
+                                    ` : ''}
+                                    <div class="totals-row">
+                                        ${taxRate === 0 ? 
+                                            `<span style="width: 100%; text-align: right; font-size: 10px; font-style: italic;">Service Provider/Trader Not registered under GST</span>` 
+                                            : 
+                                            `<span>Tax (GST ${taxRate}%)</span>
+                                            <span>₹${taxAmount.toFixed(2)}</span>`
+                                        }
+                                    </div>
+                                    <div class="totals-row final">
+                                        <span>AMOUNT</span>
+                                        <span>₹${total.toFixed(2)}</span>
+                                        <span>Status: ${inv.status === 'paid' ? 'Paid' : inv.status === 'sent' ? 'Due' : 'Unpaid'}</span>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="totals-row final">
-                                <span>AMOUNT DUE</span>
-                                <span>₹${total.toFixed(2)}</span>
+
+                            <div class="signature-section">
+                                ${settings.admin_signature_image ? 
+                                    `<img src="${settings.admin_signature_image}" class="signature-img" />` : 
+                                    `<p class="signature-name">${settings.admin_signature || settings.admin_name}</p>`
+                                }
+                                <p class="signature-label">Authorized Signature</p>
                             </div>
+
+                            <div class="footer">
+                                <p>${settings.company_name} | THANK YOU FOR YOUR BUSINESS!${settings.company_contact ? ` | ${settings.company_contact}` : ''}</p>
+                                <p style="margin-top: 2px; font-style: italic; font-size: 10px;">This is a software generated invoice.</p>
+                            </div>
+                            ` : ''}
                         </div>
                     </div>
-
-                    <div class="signature-section">
-                        ${settings.admin_signature_image ? 
-                            `<img src="${settings.admin_signature_image}" class="signature-img" />` : 
-                            `<p class="signature-name">${settings.admin_signature || settings.admin_name}</p>`
-                        }
-                        <p class="signature-label">Authorized Signature</p>
-                    </div>
-                </div>
-
-                <div class="footer">
-                    <p>THANK YOU FOR YOUR BUSINESS!</p>
-                    <p>${settings.company_name} | ${settings.company_contact}</p>
-                    <p style="margin-top: 5px; font-style: italic; font-size: 10px;">This is a software generated invoice.</p>
-                </div>
+                    `;
+                }).join('')}
               </body>
             </html>
             `;

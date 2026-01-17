@@ -5,7 +5,7 @@ import {
   KeyboardAvoidingView, Keyboard
 } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
-import { Store, ExpenseRecord } from "../data/Store";
+import { Store, ExpenseRecord, BudgetSplit } from "../data/Store";
 import * as FileSystem from "expo-file-system";
 import { UIContext } from "../context/UIContext";
 
@@ -127,13 +127,54 @@ export const AddRecordModal = ({ visible, onClose, onSave, record }: AddRecordMo
     merchant_name: "",
     paid_through: "",
     income_amount: "0",
-    expense_amount: "0"
+    expense_amount: "0",
+    split_id: 0
   });
 
   const [suggestions, setSuggestions] = useState<{categories: string[], paidThrough: string[], merchants: string[]}>({ categories: [], paidThrough: [], merchants: [] });
   const [showCatSuggestions, setShowCatSuggestions] = useState(false);
   const [showPaidSuggestions, setShowPaidSuggestions] = useState(false);
   const [showMerchantSuggestions, setShowMerchantSuggestions] = useState(false);
+  
+  const [availableSplits, setAvailableSplits] = useState<BudgetSplit[]>([]);
+  const [showSplitSuggestions, setShowSplitSuggestions] = useState(false);
+  const [splitName, setSplitName] = useState("");
+
+  useEffect(() => {
+      loadSplits();
+  }, [form.expense_date, form.expense_category, visible]);
+
+  const loadSplits = async () => {
+      if (!form.expense_category || !form.expense_date) {
+          setAvailableSplits([]);
+          return;
+      }
+      
+      const date = new Date(form.expense_date);
+      if (isNaN(date.getTime())) return;
+      
+      const year = date.getFullYear().toString();
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      
+      const budgets = await Store.getBudgets(year, month);
+      const budget = budgets.find(b => b.category === form.expense_category);
+      
+      if (budget && budget.id) {
+          const splits = await Store.getBudgetSplits(budget.id);
+          setAvailableSplits(splits);
+          
+          if (form.split_id) {
+              const s = splits.find(x => x.id === form.split_id);
+              if (s) setSplitName(s.name);
+          } else {
+             // If split_id is 0, verify if splitName matches any (edge case) or clear
+             if (!splits.some(s => s.name === splitName)) setSplitName("");
+          }
+      } else {
+          setAvailableSplits([]);
+          setSplitName("");
+      }
+  };
 
   useEffect(() => {
     if (visible) {
@@ -145,7 +186,8 @@ export const AddRecordModal = ({ visible, onClose, onSave, record }: AddRecordMo
                 merchant_name: record.merchant_name,
                 paid_through: record.paid_through,
                 income_amount: String(record.income_amount),
-                expense_amount: String(record.expense_amount)
+                expense_amount: String(record.expense_amount),
+                split_id: record.split_id || 0
             });
         } else {
             setForm({
@@ -155,7 +197,8 @@ export const AddRecordModal = ({ visible, onClose, onSave, record }: AddRecordMo
                 merchant_name: "",
                 paid_through: "",
                 income_amount: "0",
-                expense_amount: "0"
+                expense_amount: "0",
+                split_id: 0
             });
         }
         loadSuggestions();
@@ -164,7 +207,16 @@ export const AddRecordModal = ({ visible, onClose, onSave, record }: AddRecordMo
 
   const loadSuggestions = async () => {
     const cats = await Store.getUniqueValues("expense_category");
-    const paid = await Store.getUniqueValues("paid_through");
+    
+    // Fetch wallets and existing paid_through values
+    const wallets = await Store.getWallets();
+    const existingPaid = await Store.getUniqueValues("paid_through");
+    
+    // Combine: Wallets first, then others that are not in wallets
+    const walletNames = wallets.map(w => w.name);
+    const others = existingPaid.filter(p => !walletNames.includes(p));
+    const paid = [...walletNames, ...others];
+
     const merchants = await Store.getUniqueValues("merchant_name");
     setSuggestions({ categories: cats, paidThrough: paid, merchants });
   };
@@ -264,6 +316,31 @@ export const AddRecordModal = ({ visible, onClose, onSave, record }: AddRecordMo
                 zIndex={30}
             />
             
+            {availableSplits.length > 0 && (
+                <DropdownInput 
+                    label="Does this cover a Split?"
+                    value={splitName}
+                    onChangeText={t => {
+                        setSplitName(t);
+                        const s = availableSplits.find(x => x.name.toLowerCase() === t.toLowerCase());
+                        setForm(f => ({ ...f, split_id: s ? (s.id || 0) : 0 }));
+                    }}
+                    onFocus={() => setShowSplitSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowSplitSuggestions(false), 500)}
+                    suggestions={availableSplits.map(s => s.name).filter(n => n.toLowerCase().includes(splitName.toLowerCase()))}
+                    onSelect={name => {
+                        const s = availableSplits.find(x => x.name === name);
+                        if (s) {
+                            setSplitName(s.name);
+                            setForm(f => ({ ...f, split_id: s.id || 0 }));
+                        }
+                        setShowSplitSuggestions(false);
+                    }}
+                    showSuggestions={showSplitSuggestions}
+                    zIndex={25}
+                />
+            )}
+
             <DropdownInput 
                 label="Merchant"
                 value={form.merchant_name}

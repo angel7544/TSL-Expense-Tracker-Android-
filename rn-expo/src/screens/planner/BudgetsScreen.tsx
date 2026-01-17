@@ -16,6 +16,7 @@ export const BudgetsScreen = () => {
     const [currentBudget, setCurrentBudget] = useState<Partial<Budget>>({});
     const [categories, setCategories] = useState<string[]>([]);
     const [splitsByBudget, setSplitsByBudget] = useState<Record<number, BudgetSplit[]>>({});
+    const [splitStatus, setSplitStatus] = useState<Record<number, number>>({});
     const [currentSplits, setCurrentSplits] = useState<Array<Partial<BudgetSplit>>>([]);
 
     useEffect(() => {
@@ -25,10 +26,11 @@ export const BudgetsScreen = () => {
     }, [year, month]);
 
     const loadData = async () => {
-        const [budgetsData, cats, totals] = await Promise.all([
+        const [budgetsData, cats, totals, records] = await Promise.all([
             Store.getBudgets(year, month),
             Store.getUniqueValues('expense_category'),
-            Store.getCategoryTotals(year, month, 'expense')
+            Store.getCategoryTotals(year, month, 'expense'),
+            Store.list({ year, month })
         ]);
         
         setBudgets(budgetsData);
@@ -37,6 +39,14 @@ export const BudgetsScreen = () => {
         const acts: Record<string, number> = {};
         totals.forEach(t => acts[t.category] = t.amount);
         setActuals(acts);
+
+        const sStatus: Record<number, number> = {};
+        records.forEach(r => {
+            if (r.split_id) {
+                sStatus[r.split_id] = (sStatus[r.split_id] || 0) + Number(r.expense_amount || 0);
+            }
+        });
+        setSplitStatus(sStatus);
 
         const withIds = budgetsData.filter(b => !!b.id) as Required<Budget>[];
         const splitsLists = await Promise.all(withIds.map(b => Store.getBudgetSplits(b.id)));
@@ -141,11 +151,17 @@ export const BudgetsScreen = () => {
                             <Text style={styles.splitsHeaderText}>Splits • Total ₹{splitsTotal}</Text>
                         </View>
                         <View style={styles.splitsRow}>
-                            {splits.map(s => (
-                                <View key={s.id} style={styles.splitChip}>
-                                    <Text style={styles.splitChipText}>{s.name}: ₹{s.amount}</Text>
-                                </View>
-                            ))}
+                            {splits.map(s => {
+                                const spent = s.id ? (splitStatus[s.id] || 0) : 0;
+                                const isDone = s.amount > 0 && spent >= s.amount;
+                                return (
+                                    <View key={s.id} style={[styles.splitChip, isDone && { backgroundColor: theme.colors.success + '20', borderColor: theme.colors.success, borderWidth: 1 }]}>
+                                        <Text style={[styles.splitChipText, isDone && { color: theme.colors.success, fontWeight: 'bold' }]}>
+                                            {s.name}: ₹{s.amount} {spent > 0 && spent < s.amount && `(${spent})`} {isDone && '✓'}
+                                        </Text>
+                                    </View>
+                                );
+                            })}
                         </View>
                     </View>
                 )}

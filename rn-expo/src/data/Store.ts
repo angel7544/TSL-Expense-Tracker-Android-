@@ -18,6 +18,14 @@ export interface BudgetSplit {
   amount: number;
 }
 
+export interface Wallet {
+  id?: number;
+
+  name: string;
+  type: string;
+  balance: number;
+}
+
 export interface Todo {
   id?: number;
   text: string;
@@ -46,6 +54,7 @@ export interface ExpenseRecord {
   income_amount: number;
   expense_amount: number;
   report_name?: string;
+  split_id?: number;
   bal?: number;
 }
 
@@ -230,7 +239,8 @@ export const Store = {
             paid_through TEXT,
             income_amount REAL,
             expense_amount REAL,
-            report_name TEXT
+            report_name TEXT,
+            split_id INTEGER
         );`
       ).catch(err => console.error("DB Init Error (expenses)", err));
 
@@ -245,6 +255,16 @@ export const Store = {
             year TEXT
         );`
       ).catch(err => console.error("DB Init Error (budgets)", err));
+
+      // Create Wallets Table
+      await db.execAsync(
+        `CREATE TABLE IF NOT EXISTS wallets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            type TEXT,
+            balance REAL
+        );`
+      ).catch(err => console.error("DB Init Error (wallets)", err));
 
       // Create Todos Table
       await db.execAsync(
@@ -286,6 +306,11 @@ export const Store = {
       } catch (e) { /* ignore */ }
       try {
         await db.execAsync("ALTER TABLE notes ADD COLUMN is_important INTEGER;");
+      } catch (e) { /* ignore */ }
+    
+      // Migration for expenses split_id
+      try {
+        await db.execAsync("ALTER TABLE expenses ADD COLUMN split_id INTEGER;");
       } catch (e) { /* ignore */ }
 
       // Create Invoices Table
@@ -610,7 +635,8 @@ export const Store = {
               paid_through TEXT,
               income_amount REAL,
               expense_amount REAL,
-              report_name TEXT
+              report_name TEXT,
+              split_id INTEGER
           );`
         ).catch(err => console.error("DB Init Error (expenses)", err));
 
@@ -633,6 +659,15 @@ export const Store = {
                 amount REAL
             );`
         ).catch(err => console.error("DB Init Error (budget_splits)", err));
+
+        await db.execAsync(
+            `CREATE TABLE IF NOT EXISTS wallets (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT,
+                type TEXT,
+                balance REAL
+            );`
+        ).catch(err => console.error("DB Init Error (wallets)", err));
     
         await db.execAsync(
             `CREATE TABLE IF NOT EXISTS todos (
@@ -772,6 +807,93 @@ export const Store = {
     });
   },
 
+  // --- Wallets ---
+  async getWallets(): Promise<Wallet[]> {
+      if (Platform.OS === 'web' || !db) return [];
+      try {
+          return await db.getAllAsync<Wallet>("SELECT * FROM wallets ORDER BY name ASC");
+      } catch (e) { console.error("getWallets", e); return []; }
+  },
+
+  async saveWallet(wallet: Wallet) {
+      if (Platform.OS === 'web' || !db) return;
+      try {
+          if (wallet.id) {
+              await db.runAsync(
+                  "UPDATE wallets SET name = ?, type = ?, balance = ? WHERE id = ?",
+                  [wallet.name, wallet.type, wallet.balance, wallet.id]
+              );
+          } else {
+              await db.runAsync(
+                  "INSERT INTO wallets (name, type, balance) VALUES (?, ?, ?)",
+                  [wallet.name, wallet.type, wallet.balance]
+              );
+          }
+          this.notify();
+      } catch (e) { console.error("saveWallet", e); }
+  },
+
+  async deleteWallet(id: number) {
+      if (Platform.OS === 'web' || !db) return;
+      try {
+          await db.runAsync("DELETE FROM wallets WHERE id = ?", [id]);
+          this.notify();
+      } catch (e) { console.error("deleteWallet", e); }
+  },
+
+  async updateWalletBalance(walletName: string, amountChange: number, isExpense: boolean) {
+      if (Platform.OS === 'web' || !db || amountChange === 0) return;
+      try {
+          const wallets = await db.getAllAsync<Wallet>("SELECT * FROM wallets WHERE name = ?", [walletName]);
+          if (wallets.length > 0) {
+              const wallet = wallets[0];
+              let newBalance = wallet.balance;
+              
+              const isLiability = ['Credit Card', 'Loan', 'Liability'].includes(wallet.type);
+
+              if (isLiability) {
+                  // Liability: Expense increases debt, Income decreases debt
+                  if (isExpense) {
+                      newBalance += amountChange;
+                  } else {
+                      newBalance -= amountChange;
+                  }
+              } else {
+                  // Asset: Expense decreases asset, Income increases asset
+                  if (isExpense) {
+                      newBalance -= amountChange;
+                  } else {
+                      newBalance += amountChange;
+                  }
+              }
+
+              if (wallet.id) {
+                  await db.runAsync("UPDATE wallets SET balance = ? WHERE id = ?", [newBalance, wallet.id]);
+              }
+          }
+      } catch (e) { console.error("updateWalletBalance", e); }
+  },
+
+  async getWalletStats(walletName: string, year: string, month: string): Promise<{ income: number, expense: number }> {
+      if (Platform.OS === 'web' || !db) return { income: 0, expense: 0 };
+      try {
+          const res = await db.getAllAsync<{ inc: number, exp: number }>(
+              `SELECT 
+                SUM(income_amount) as inc, 
+                SUM(expense_amount) as exp 
+               FROM expenses 
+               WHERE paid_through = ? COLLATE NOCASE
+               AND strftime('%Y', expense_date) = ? 
+               AND strftime('%m', expense_date) = ?`,
+              [walletName, year, month]
+          );
+          if (res && res.length > 0) {
+              return { income: res[0].inc || 0, expense: res[0].exp || 0 };
+          }
+          return { income: 0, expense: 0 };
+      } catch (e) { console.error("getWalletStats", e); return { income: 0, expense: 0 }; }
+  },
+
   async summaryAsync(filters: FilterOptions) {
     const d = await this.list(filters);
     const inc = d.reduce((s, x) => s + Number(x.income_amount || 0), 0);
@@ -793,7 +915,7 @@ export const Store = {
         if (!db) return;
         try {
             await db.runAsync(
-                `INSERT INTO expenses (expense_date, expense_description, expense_category, merchant_name, paid_through, income_amount, expense_amount, report_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                `INSERT INTO expenses (expense_date, expense_description, expense_category, merchant_name, paid_through, income_amount, expense_amount, report_name, split_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [
                     record.expense_date,
                     record.expense_description,
@@ -802,9 +924,16 @@ export const Store = {
                     record.paid_through,
                     record.income_amount,
                     record.expense_amount,
-                    record.report_name || ""
+                    record.report_name || "",
+                    record.split_id || null
                 ]
             );
+
+            if (record.paid_through) {
+                if (record.expense_amount > 0) await this.updateWalletBalance(record.paid_through, record.expense_amount, true);
+                if (record.income_amount > 0) await this.updateWalletBalance(record.paid_through, record.income_amount, false);
+            }
+
             if (shouldNotify) this.notify();
         } catch (e) {
             console.error("Add Error", e);
@@ -822,8 +951,18 @@ export const Store = {
     } else {
         if (!db) return;
         try {
+            // Get old record to revert balance
+            const oldRecords = await db.getAllAsync<ExpenseRecord>("SELECT * FROM expenses WHERE id = ?", [record.id!]);
+            if (oldRecords.length > 0) {
+                const old = oldRecords[0];
+                if (old.paid_through) {
+                    if (old.expense_amount > 0) await this.updateWalletBalance(old.paid_through, old.expense_amount, false);
+                    if (old.income_amount > 0) await this.updateWalletBalance(old.paid_through, old.income_amount, true);
+                }
+            }
+
             await db.runAsync(
-                `UPDATE expenses SET expense_date = ?, expense_description = ?, expense_category = ?, merchant_name = ?, paid_through = ?, income_amount = ?, expense_amount = ?, report_name = ? WHERE id = ?`,
+                `UPDATE expenses SET expense_date = ?, expense_description = ?, expense_category = ?, merchant_name = ?, paid_through = ?, income_amount = ?, expense_amount = ?, report_name = ?, split_id = ? WHERE id = ?`,
                 [
                     record.expense_date,
                     record.expense_description,
@@ -833,9 +972,17 @@ export const Store = {
                     record.income_amount,
                     record.expense_amount,
                     record.report_name || "",
+                    record.split_id || null,
                     record.id!
                 ]
             );
+
+            // Apply new
+            if (record.paid_through) {
+                if (record.expense_amount > 0) await this.updateWalletBalance(record.paid_through, record.expense_amount, true);
+                if (record.income_amount > 0) await this.updateWalletBalance(record.paid_through, record.income_amount, false);
+            }
+
             this.notify();
         } catch (e) {
             console.error("Update Error", e);
@@ -851,11 +998,21 @@ export const Store = {
         this.notify();
         resolve();
       } else {
+        if (!db) { resolve(); return; }
         try {
-            await db!.runAsync("DELETE FROM expenses WHERE id = ?", [id]);
+            const oldRecords = await db.getAllAsync<ExpenseRecord>("SELECT * FROM expenses WHERE id = ?", [id]);
+            if (oldRecords.length > 0) {
+                const old = oldRecords[0];
+                if (old.paid_through) {
+                    if (old.expense_amount > 0) await this.updateWalletBalance(old.paid_through, old.expense_amount, false);
+                    if (old.income_amount > 0) await this.updateWalletBalance(old.paid_through, old.income_amount, true);
+                }
+            }
+            await db.runAsync("DELETE FROM expenses WHERE id = ?", [id]);
             this.notify();
             resolve();
         } catch (err) {
+            console.error("Remove error", err);
             resolve();
         }
       }

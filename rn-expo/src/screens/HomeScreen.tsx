@@ -33,6 +33,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const [recentRecords, setRecentRecords] = useState<ExpenseRecord[]>([]);
   const [recentFiles, setRecentFiles] = useState<{name: string, uri: string, dbName: string}[]>([]);
   const [currentDbName, setCurrentDbName] = useState("tsl_expenses.db");
+  const [mostlyUsedWallet, setMostlyUsedWallet] = useState<{name: string, count: number} | null>(null);
 
   // Filter state
   const [filterCategory, setFilterCategory] = useState('All');
@@ -231,6 +232,28 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                 </View>
             </View>
         </Animated.View>
+
+        {/* Mostly Used Wallet */}
+        {mostlyUsedWallet && (
+            <View style={{ paddingHorizontal: 16, marginBottom: 24 }}>
+                <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>Mostly Used Wallet</Text>
+                </View>
+                <View style={[styles.card, { flexDirection: 'row', alignItems: 'center', padding: 16, marginTop: 10 }]}>
+                    <View style={{ 
+                        width: 48, height: 48, borderRadius: 24, 
+                        backgroundColor: theme.colors.primary + '20', 
+                        justifyContent: 'center', alignItems: 'center', marginRight: 16 
+                    }}>
+                        <Ionicons name="wallet" size={24} color={theme.colors.primary} />
+                    </View>
+                    <View>
+                        <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text }}>{mostlyUsedWallet.name}</Text>
+                        <Text style={{ fontSize: 14, color: theme.colors.subtext }}>{mostlyUsedWallet.count} transactions this month</Text>
+                    </View>
+                </View>
+            </View>
+        )}
 
         {/* Planner Shortcuts */}
         <View style={styles.sectionHeader}>

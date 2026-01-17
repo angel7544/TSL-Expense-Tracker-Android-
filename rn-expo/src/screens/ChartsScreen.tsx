@@ -29,11 +29,13 @@ export default function ChartsScreen() {
 
   const [data, setData] = useState<{
     pieData: CategoryData[], 
+    walletPieData: CategoryData[],
     totalInc: number, 
     totalExp: number,
     totalBalance: number
   }>({ 
     pieData: [], 
+    walletPieData: [],
     totalInc: 0, 
     totalExp: 0,
     totalBalance: 0 
@@ -51,6 +53,7 @@ export default function ChartsScreen() {
       
       // 1. Process Category Data (Expense Only)
       const catMap: Record<string, { amount: number, count: number }> = {};
+      const walletMap: Record<string, { amount: number, count: number }> = {};
       let totalExp = 0;
       let totalInc = 0;
 
@@ -62,7 +65,7 @@ export default function ChartsScreen() {
         totalExp += expAmt;
         totalInc += incAmt;
 
-        // Group Expenses by Category
+        // Group Expenses by Category & Wallet
         if (expAmt > 0) {
             const cat = r.expense_category || "Uncategorized";
             if (!catMap[cat]) {
@@ -70,6 +73,13 @@ export default function ChartsScreen() {
             }
             catMap[cat].amount += expAmt;
             catMap[cat].count += 1;
+
+            const wallet = r.paid_through || "Unknown";
+            if (!walletMap[wallet]) {
+                walletMap[wallet] = { amount: 0, count: 0 };
+            }
+            walletMap[wallet].amount += expAmt;
+            walletMap[wallet].count += 1;
         }
       });
       
@@ -88,10 +98,22 @@ export default function ChartsScreen() {
           legendFontColor: theme.colors.subtext,
           legendFontSize: 12
         }))
-        .sort((a, b) => b.amount - a.amount); // Sort by highest expense
+        .sort((a, b) => b.amount - a.amount);
+
+      const walletPieData = Object.keys(walletMap)
+        .map((w, i) => ({
+          name: w,
+          amount: walletMap[w].amount,
+          count: walletMap[w].count,
+          color: colors[(i + 3) % colors.length],
+          legendFontColor: theme.colors.subtext,
+          legendFontSize: 12
+        }))
+        .sort((a, b) => b.amount - a.amount);
 
       setData({ 
           pieData, 
+          walletPieData,
           totalInc, 
           totalExp, 
           totalBalance: totalInc - totalExp 
@@ -445,6 +467,74 @@ export default function ChartsScreen() {
                         <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                             <View style={[styles.iconContainer, { backgroundColor: item.color + '20' }]}>
                                 <Ionicons name={getCategoryIcon(item.name)} size={20} color={item.color} />
+                            </View>
+                            <View style={{ marginLeft: 12 }}>
+                                <Text style={styles.categoryName}>{item.name}</Text>
+                                <Text style={styles.transactionCount}>{item.count} transactions</Text>
+                            </View>
+                        </View>
+                        <Text style={styles.categoryAmount}>₹{item.amount.toLocaleString('en-IN')}</Text>
+                    </View>
+                ))}
+            </View>
+        </View>
+
+        {/* Wallet Usage Section */}
+        <View style={styles.card}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <Text style={styles.cardTitle}>Wallet Usage</Text>
+            </View>
+            
+            {data.walletPieData.length > 0 ? (
+                <View style={{ alignItems: 'center', position: 'relative' }}>
+                    <PieChart
+                        data={data.walletPieData}
+                        width={width - 48}
+                        height={240}
+                        chartConfig={{
+                            color: (opacity = 1) => theme.mode === 'dark' ? `rgba(255, 255, 255, ${opacity})` : `rgba(0, 0, 0, ${opacity})`,
+                        }}
+                        accessor={"amount"}
+                        backgroundColor={"transparent"}
+                        paddingLeft={"80"}
+                        absolute
+                        hasLegend={false}
+                    />
+                    
+                    {/* Donut Hole Simulation */}
+                    <View style={{ 
+                        position: 'absolute', 
+                        top: 60, 
+                        left: '50%',
+                        marginLeft: -60,
+                        width: 120,
+                        height: 120,
+                        backgroundColor: theme.colors.card,
+                        borderRadius: 60,
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.1,
+                        elevation: 2
+                    }}>
+                        <Text style={{ fontSize: 10, color: theme.colors.subtext, textTransform: 'uppercase' }}>Total Exp</Text>
+                        <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.colors.text }}>
+                             ₹{(data.totalExp/1000).toFixed(1)}k
+                        </Text>
+                    </View>
+                </View>
+            ) : (
+                <Text style={{ textAlign: 'center', color: theme.colors.subtext, padding: 20 }}>No wallet usage recorded</Text>
+            )}
+
+            {/* Wallet List */}
+            <View style={{ marginTop: 20 }}>
+                {data.walletPieData.map((item, index) => (
+                    <View key={index} style={styles.categoryRow}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                            <View style={[styles.iconContainer, { backgroundColor: item.color + '20' }]}>
+                                <Ionicons name="wallet-outline" size={20} color={item.color} />
                             </View>
                             <View style={{ marginLeft: 12 }}>
                                 <Text style={styles.categoryName}>{item.name}</Text>
