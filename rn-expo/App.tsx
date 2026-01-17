@@ -22,6 +22,8 @@ import OnboardingScreen from "./src/screens/OnboardingScreen";
 import { BlurView } from "expo-blur";
 import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 
+const Tab = createMaterialTopTabNavigator();
+
 const CustomTabBarButton = ({ children, onPress, backgroundColor }: any) => (
     <TouchableOpacity
         style={{
@@ -64,14 +66,14 @@ function MyTabBar({ state, descriptors, navigation, onAddPress, navbarStyle, the
         return (
             <View style={{
                 position: 'absolute',
-                bottom: 25,
+                bottom: 20,
                 left: 20,
                 right: 20,
-                height: 70,
+                height: 65,
                 borderRadius: 35,
                 shadowColor: "#000",
                 shadowOffset: { width: 0, height: 10 },
-                shadowOpacity: 0.25,
+                shadowOpacity: 0.35,
                 shadowRadius: 10,
                 elevation: 5,
             }}>
@@ -82,13 +84,13 @@ function MyTabBar({ state, descriptors, navigation, onAddPress, navbarStyle, the
                     overflow: 'hidden',
                 }}>
                     <BlurView
-                        intensity={90}
+                        intensity={80}
                         tint={theme?.mode === 'dark' ? 'dark' : 'light'}
                         style={{ flex: 1 }}
                     />
                     <View style={{
                         position: 'absolute', top: 0, bottom: 0, left: 0, right: 0,
-                        backgroundColor: theme?.mode === 'dark' ? 'rgba(30,30,30,0.5)' : 'rgba(255,255,255,0.4)'
+                        backgroundColor: theme?.mode === 'dark' ? 'rgba(30, 30, 30, 0.68)' : 'rgba(255, 255, 255, 0.71)'
                     }} />
                 </View>
                 
@@ -303,7 +305,6 @@ export default function App() {
   }, []);
 
   const currentTheme = getTheme(themeName, themeMode);
-  const Tab = createMaterialTopTabNavigator();
   
   return (
     <SafeAreaProvider>

@@ -495,7 +495,7 @@ export default function SettingsScreen({ navigation }: any) {
                         Store.setSettings(newSettings);
                     }}
                     style={{
-                        width: 44, height: 44, borderRadius: 22,
+                        width: 38, height: 38, borderRadius: 20,
                         backgroundColor: Palettes[p as keyof typeof Palettes].primary,
                         justifyContent: 'center', alignItems: 'center',
                         borderWidth: (settings.theme_name || 'indigo') === p ? 3 : 0,
@@ -916,6 +916,6 @@ const getStyles = (theme: any) => StyleSheet.create({
     dbOptionActive: {
         backgroundColor: theme.colors.card, borderColor: theme.colors.primary
     },
-    dbOptionText: { fontSize: 14, color: theme.colors.subtext, fontWeight: '500', flex: 1 },
+    dbOptionText: { fontSize: 12, color: theme.colors.subtext, fontWeight: '500', flex: 1 },
     dbOptionTextActive: { color: theme.colors.primary, fontWeight: '700' },
 });

@@ -158,6 +158,7 @@ export const Store = {
   isAuthenticated: false,
   authModalVisible: false,
   appMode: 'finance' as 'finance' | 'planner',
+  plannerInitialRoute: 'Budgets' as string,
   currentDbName: "tsl_expenses.db",
   listeners: [] as (() => void)[],
 
@@ -1062,22 +1063,29 @@ export const Store = {
   async getNotes(): Promise<Note[]> {
       if (Platform.OS === 'web' || !db) return [];
       try {
-          return await db.getAllAsync<Note>("SELECT * FROM notes ORDER BY created_at DESC");
+          const notes = await db.getAllAsync<any>("SELECT * FROM notes ORDER BY created_at DESC");
+          return notes.map(n => ({
+              ...n,
+              is_important: !!n.is_important // Convert 0/1/null to boolean
+          }));
       } catch (e) { console.error("getNotes", e); return []; }
   },
 
   async saveNote(note: Note) {
       if (Platform.OS === 'web' || !db) return;
       try {
+          const isImportant = note.is_important ? 1 : 0;
+          const imageUri = note.image_uri || "";
+          
           if (note.id) {
               await db.runAsync(
                   "UPDATE notes SET title = ?, content = ?, created_at = ?, image_uri = ?, is_important = ? WHERE id = ?",
-                  [note.title, note.content, note.created_at, note.image_uri || "", note.is_important ? 1 : 0, note.id]
+                  [note.title, note.content, note.created_at, imageUri, isImportant, note.id]
               );
           } else {
               await db.runAsync(
                   "INSERT INTO notes (title, content, created_at, image_uri, is_important) VALUES (?, ?, ?, ?, ?)",
-                  [note.title, note.content, note.created_at, note.image_uri || "", note.is_important ? 1 : 0]
+                  [note.title, note.content, note.created_at, imageUri, isImportant]
               );
           }
           this.notify();

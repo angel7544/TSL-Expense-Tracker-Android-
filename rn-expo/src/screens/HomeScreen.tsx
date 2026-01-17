@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useContext, useMemo } from "react";
 import { 
   View, Text, ScrollView, TouchableOpacity, 
-  FlatList, useWindowDimensions, Animated, Platform, Alert, StyleSheet, Image, RefreshControl
+  FlatList, useWindowDimensions, Animated, Platform, Alert, StyleSheet, Image, RefreshControl, Modal
 } from "react-native";
 import * as FileSystem from "expo-file-system";
 import { Ionicons } from '@expo/vector-icons';
@@ -10,8 +10,15 @@ import { useFocusEffect } from '@react-navigation/native';
 import { AppHeader } from "../components/AppHeader";
 import { UIContext } from "../context/UIContext";
 import { getTheme } from "../constants/Theme";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+const truncate = (str: string, n: number = 20) => {
+  if (!str) return "";
+  return str.length > n ? str.substring(0, n - 1) + "..." : str;
+};
 
 export default function HomeScreen({ navigation }: { navigation: any }) {
+  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const { theme } = useContext(UIContext);
   const styles = useMemo(() => getStyles(theme), [theme]);
@@ -26,6 +33,11 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const [recentRecords, setRecentRecords] = useState<ExpenseRecord[]>([]);
   const [recentFiles, setRecentFiles] = useState<{name: string, uri: string, dbName: string}[]>([]);
   const [currentDbName, setCurrentDbName] = useState("tsl_expenses.db");
+
+  // Filter state
+  const [filterCategory, setFilterCategory] = useState('All');
+  const [isFilterVisible, setIsFilterVisible] = useState(false);
+  const allCategories = ['All', 'Food', 'Transport', 'Office', 'Education', 'Medical', 'Utilities', 'Entertainment', 'Shopping', 'Housing', 'Others'];
 
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -67,6 +79,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     const records = await Store.list({ year, month }); // Get all for the month first
     const filtered = records
         .filter(r => activeTab === 'Expense' ? Number(r.expense_amount) > 0 : Number(r.income_amount) > 0)
+        .filter(r => filterCategory === 'All' || r.expense_category === filterCategory)
         .slice(0, 10); // Limit to 10
     setRecentRecords(filtered);
     
@@ -80,17 +93,17 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     setRefreshing(true);
     await loadData();
     setRefreshing(false);
-  }, [currentDate, activeTab, isAllTime]);
+  }, [currentDate, activeTab, isAllTime, filterCategory]);
 
   useEffect(() => {
     const unsub = Store.subscribe(loadData);
     return unsub;
-  }, [currentDate, activeTab, isAllTime]);
+  }, [currentDate, activeTab, isAllTime, filterCategory]);
 
   useFocusEffect(
     React.useCallback(() => {
       loadData();
-    }, [currentDate, activeTab, isAllTime])
+    }, [currentDate, activeTab, isAllTime, filterCategory])
   );
 
   const switchDatabase = async (file: {name: string, uri: string, dbName: string}) => {
@@ -132,33 +145,44 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         }
       >
         {/* Date Filter Controls */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginVertical: 16 }}>
-            <TouchableOpacity 
-                style={[styles.filterBtn, !isAllTime && styles.filterBtnActive]} 
-                onPress={() => setIsAllTime(false)}
-            >
-                <Text style={[styles.filterText, !isAllTime && styles.filterTextActive]}>Monthly</Text>
-            </TouchableOpacity>
-            <View style={{ width: 12 }} />
-            <TouchableOpacity 
-                style={[styles.filterBtn, isAllTime && styles.filterBtnActive]} 
-                onPress={() => setIsAllTime(true)}
-            >
-                <Text style={[styles.filterText, isAllTime && styles.filterTextActive]}>All Time</Text>
-            </TouchableOpacity>
-        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, marginVertical: 16 }}>
+            {!isAllTime ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <TouchableOpacity onPress={() => changeMonth(-1)} style={{ padding: 4 }}>
+                        <Ionicons name="chevron-back" size={20} color={theme.colors.text} />
+                    </TouchableOpacity>
+                    <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text, marginHorizontal: 8 }}>
+                        {monthName} {currentDate.getFullYear()}
+                    </Text>
+                    <TouchableOpacity onPress={() => changeMonth(1)} style={{ padding: 4 }}>
+                        <Ionicons name="chevron-forward" size={20} color={theme.colors.text} />
+                    </TouchableOpacity>
+                </View>
+            ) : (
+                <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.text }}>All Time Stats</Text>
+            )}
 
-        {!isAllTime && (
-            <View style={styles.monthSelector}>
-                <TouchableOpacity onPress={() => changeMonth(-1)} style={styles.arrowBtn}>
-                    <Ionicons name="chevron-back" size={24} color={theme.colors.text} />
+            <View style={{ flexDirection: 'row', backgroundColor: theme.colors.card, borderRadius: 20, padding: 2, borderWidth: 1, borderColor: theme.colors.border }}>
+                <TouchableOpacity 
+                    style={{ 
+                        paddingVertical: 6, paddingHorizontal: 12, borderRadius: 18, 
+                        backgroundColor: !isAllTime ? theme.colors.text : 'transparent' 
+                    }} 
+                    onPress={() => setIsAllTime(false)}
+                >
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: !isAllTime ? theme.colors.background : theme.colors.subtext }}>Monthly</Text>
                 </TouchableOpacity>
-                <Text style={styles.monthText}>{monthName} {currentDate.getFullYear()}</Text>
-                <TouchableOpacity onPress={() => changeMonth(1)} style={styles.arrowBtn}>
-                    <Ionicons name="chevron-forward" size={24} color={theme.colors.text} />
+                <TouchableOpacity 
+                    style={{ 
+                        paddingVertical: 6, paddingHorizontal: 12, borderRadius: 18, 
+                        backgroundColor: isAllTime ? theme.colors.text : 'transparent' 
+                    }} 
+                    onPress={() => setIsAllTime(true)}
+                >
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: isAllTime ? theme.colors.background : theme.colors.subtext }}>All Time</Text>
                 </TouchableOpacity>
             </View>
-        )}
+        </View>
 
         {/* Toggle Switch */}
         <View style={styles.toggleContainer}>
@@ -208,6 +232,37 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
             </View>
         </Animated.View>
 
+        {/* Planner Shortcuts */}
+        <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Quick Actions</Text>
+        </View>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginBottom: 24, paddingHorizontal: 16 }}>
+            {[
+                { name: 'Budgets', route: 'Budgets', icon: 'wallet', color: '#4F46E5' },
+                { name: 'Todos', route: 'Todos', icon: 'checkbox', color: '#10B981' },
+                { name: 'Notes', route: 'Notes', icon: 'document-text', color: '#F59E0B' },
+                { name: 'Invoices', route: 'Invoices', icon: 'receipt', color: '#EF4444' },
+            ].map((item) => (
+                <TouchableOpacity 
+                    key={item.name} 
+                    style={{ alignItems: 'center' }} 
+                    onPress={() => {
+                        Store.plannerInitialRoute = item.route;
+                        Store.setAppMode('planner');
+                    }}
+                >
+                    <View style={{ 
+                        width: 56, height: 56, borderRadius: 20, 
+                        backgroundColor: item.color + '15', 
+                        justifyContent: 'center', alignItems: 'center', marginBottom: 8 
+                    }}>
+                         <Ionicons name={item.icon as any} size={24} color={item.color} />
+                    </View>
+                    <Text style={{ fontSize: 12, color: theme.colors.text, fontWeight: '500' }}>{item.name}</Text>
+                </TouchableOpacity>
+            ))}
+        </View>
+
         {/* Top Spending / Income */}
         <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Top {activeTab === 'Expense' ? 'Spending' : 'Sources'}</Text>
@@ -227,8 +282,15 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         </ScrollView>
 
         {/* Recent Transactions / Monthly Budget */}
-        <View style={styles.sectionHeader}>
+        <View style={[styles.sectionHeader, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
             <Text style={styles.sectionTitle}>Recent Transactions</Text>
+            <TouchableOpacity 
+                onPress={() => setIsFilterVisible(true)}
+                style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.card, padding: 6, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border }}
+            >
+                <Ionicons name="filter" size={16} color={theme.colors.primary} />
+                <Text style={{ marginLeft: 4, fontSize: 12, color: theme.colors.text }}>{filterCategory === 'All' ? 'Filter' : filterCategory}</Text>
+            </TouchableOpacity>
         </View>
 
         <View style={{ paddingHorizontal: 16 }}>
@@ -273,6 +335,77 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         )}
 
       </ScrollView>
+
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={isFilterVisible}
+        onRequestClose={() => setIsFilterVisible(false)}
+      >
+        <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+            <TouchableOpacity 
+                style={{ 
+                    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, 
+                    backgroundColor: 'rgba(0,0,0,0.5)' 
+                }} 
+                activeOpacity={1} 
+                onPress={() => setIsFilterVisible(false)}
+            />
+            
+            <View style={{ 
+                backgroundColor: theme.colors.card, 
+                borderTopLeftRadius: 24, 
+                borderTopRightRadius: 24, 
+                padding: 24, 
+                paddingBottom: Math.max(24, insets.bottom + 10),
+                maxHeight: '80%',
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: -2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 10,
+                elevation: 10
+            }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                    <Text style={{ fontSize: 20, fontWeight: 'bold', color: theme.colors.text }}>Filter by Category</Text>
+                    <TouchableOpacity onPress={() => setIsFilterVisible(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                        <Ionicons name="close-circle" size={28} color={theme.colors.subtext} />
+                    </TouchableOpacity>
+                </View>
+                <ScrollView showsVerticalScrollIndicator={false}>
+                    {allCategories.map((cat, index) => (
+                        <TouchableOpacity 
+                            key={index} 
+                            style={{ 
+                                paddingVertical: 16, 
+                                borderBottomWidth: index === allCategories.length - 1 ? 0 : 1, 
+                                borderBottomColor: theme.colors.border,
+                                flexDirection: 'row',
+                                justifyContent: 'space-between',
+                                alignItems: 'center'
+                            }}
+                            onPress={() => {
+                                setFilterCategory(cat);
+                                setIsFilterVisible(false);
+                            }}
+                        >
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                <View style={{ 
+                                    width: 40, height: 40, borderRadius: 20, 
+                                    backgroundColor: cat === filterCategory ? theme.colors.primary + '20' : theme.colors.background,
+                                    alignItems: 'center', justifyContent: 'center', marginRight: 12,
+                                    borderWidth: 1, borderColor: theme.colors.border
+                                }}>
+                                    <Ionicons name={getCategoryIcon(cat)} size={20} color={cat === filterCategory ? theme.colors.primary : theme.colors.subtext} />
+                                </View>
+                                <Text style={{ fontSize: 16, color: cat === filterCategory ? theme.colors.primary : theme.colors.text, fontWeight: cat === filterCategory ? '600' : '400' }}>{cat}</Text>
+                            </View>
+                            {cat === filterCategory && <Ionicons name="checkmark-circle" size={24} color={theme.colors.primary} />}
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+            </View>
+        </View>
+      </Modal>
     </View>
   );
 }

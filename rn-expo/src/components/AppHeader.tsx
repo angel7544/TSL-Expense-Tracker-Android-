@@ -4,7 +4,6 @@ import {
   GestureResponderEvent
 } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
 import * as FileSystem from "expo-file-system";
 import * as DocumentPicker from "expo-document-picker";
 import * as Sharing from "expo-sharing";
@@ -193,21 +192,21 @@ export const AppHeader = ({ title, subtitle, showCreateDB = false }: { title?: s
         </TouchableOpacity>
         <View style={styles.textContainer}>
             {title && <Text style={[styles.title, { color: theme.colors.text }]}>{title}</Text>}
-            {subtitle && <Text style={[styles.subtitle, { color: theme.colors.subtext }]}>{subtitle}</Text>}
+            {subtitle && <Text style={[styles.subtitle, { color: theme.colors.subtext }]}>{subtitle.length > 20 ? subtitle.substring(0, 20) + '...' : subtitle}</Text>}
         </View>
       </View>
 
       <View style={styles.rightRow}>
         {showCreateDB && (
             <TouchableOpacity onPress={() => setNewFileModalVisible(true)} style={[styles.iconButton, { backgroundColor: theme.mode === 'dark' ? '#374151' : '#F3F4F6' }]}>
-                <Ionicons name="add" size={24} color={theme.colors.primary} />
+                <Ionicons name="add" size={20} color={theme.colors.primary} />
             </TouchableOpacity>
         )}
         <TouchableOpacity onPress={handleImport} style={[styles.iconButton, { backgroundColor: theme.mode === 'dark' ? '#374151' : '#F3F4F6' }]}>
-            <Ionicons name="file-tray-full-outline" size={24} color={theme.colors.text} />
+            <Ionicons name="file-tray-full-outline" size={20} color={theme.colors.text} />
         </TouchableOpacity>
         <TouchableOpacity onPress={handleExport} style={[styles.iconButton, { backgroundColor: theme.mode === 'dark' ? '#374151' : '#F3F4F6' }]}>
-            <Ionicons name="share-social-outline" size={24} color={theme.colors.text} />
+            <Ionicons name="share-social-outline" size={20} color={theme.colors.text} />
         </TouchableOpacity>
         {/* {onLogout && (
             <TouchableOpacity onPress={onLogout} style={[styles.iconButton, { backgroundColor: '#FEE2E2' }]}>
@@ -268,13 +267,13 @@ const styles = StyleSheet.create({
   rightRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   iconButton: {
     padding: 10,
     borderRadius: 12,
     backgroundColor: '#F3F4F6',
-    marginLeft: 8,
+    marginLeft: 6,
   },
   logo: {
     width: 44,

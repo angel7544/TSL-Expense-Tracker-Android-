@@ -110,6 +110,7 @@ export const PlannerNavigator = () => {
 
     return (
         <Tab.Navigator
+            initialRouteName={Store.plannerInitialRoute || 'Budgets'}
             tabBarPosition="bottom"
             tabBar={props => <PlannerTabBar {...props} navbarStyle={navbarStyle} />}
             screenOptions={{

@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
 import { 
   View, Text, TextInput, TouchableOpacity, Modal, ScrollView, 
   StyleSheet, Alert, Platform, 
-  KeyboardAvoidingView
+  KeyboardAvoidingView, Keyboard
 } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
 import { Store, ExpenseRecord } from "../data/Store";
@@ -39,6 +39,7 @@ const DropdownInput = ({
 }) => {
     const [isFocused, setIsFocused] = useState(false);
     const { theme } = useContext(UIContext);
+    const inputRef = useRef<TextInput>(null);
 
     return (
         <View style={{ marginBottom: 20, zIndex: zIndex }}>
@@ -64,6 +65,7 @@ const DropdownInput = ({
 
                 <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16 }}>
                     <TextInput 
+                        ref={inputRef}
                         value={value}
                         onChangeText={onChangeText}
                         onFocus={() => { setIsFocused(true); onFocus(); }}
@@ -71,34 +73,41 @@ const DropdownInput = ({
                         style={{ flex: 1, fontSize: 16, color: theme.colors.text }}
                         placeholderTextColor={theme.colors.placeholder}
                     />
-                    <TouchableOpacity onPress={onFocus}>
-                        <Ionicons name="caret-down-outline" size={20} color={theme.colors.subtext} />
+                    <TouchableOpacity onPress={() => {
+                        if (isFocused) {
+                            inputRef.current?.blur();
+                        } else {
+                            inputRef.current?.focus();
+                        }
+                    }}>
+                        <Ionicons name={showSuggestions ? "caret-up-outline" : "caret-down-outline"} size={20} color={theme.colors.subtext} />
                     </TouchableOpacity>
                 </View>
             </View>
             
             {showSuggestions && suggestions.length > 0 && (
                 <View style={{ 
-                    position: 'absolute', 
-                    top: 54, 
-                    left: 0, 
-                    right: 0, 
+                    marginTop: 4,
                     backgroundColor: theme.colors.card, 
                     borderWidth: 1, 
                     borderColor: theme.colors.border,
-                    borderBottomLeftRadius: 8,
-                    borderBottomRightRadius: 8,
-                    elevation: 5,
-                    zIndex: 1000,
+                    borderRadius: 8,
                     maxHeight: 200,
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.25,
-                    shadowRadius: 3.84,
                 }}>
-                    <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-                        {suggestions.map((item, i) => (
-                            <TouchableOpacity key={i} onPress={() => onSelect(item)} style={{ padding: 16, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
+                    <ScrollView 
+                        nestedScrollEnabled={true}
+                        keyboardShouldPersistTaps="handled"
+                        style={{ maxHeight: 200 }}
+                    >
+                        {suggestions.map((item, index) => (
+                            <TouchableOpacity 
+                                key={index} 
+                                onPress={() => {
+                                    onSelect(item);
+                                    Keyboard.dismiss();
+                                }} 
+                                style={{ padding: 16, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}
+                            >
                                 <Text style={{fontSize: 14, color: theme.colors.text}}>{item}</Text>
                             </TouchableOpacity>
                         ))}

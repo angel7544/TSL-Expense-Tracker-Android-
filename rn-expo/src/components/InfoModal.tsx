@@ -49,14 +49,14 @@ export const InfoModal = ({ visible, onClose, logoUri }: InfoModalProps) => {
 
                     {logoUri && <Image source={{ uri: logoUri }} style={styles.modalLogo} />}
                     <Text style={[styles.modalTitle, { color: theme.colors.text }]}>Expense Tracker</Text>
-                    <Text style={[styles.modalVersion, { color: theme.colors.subtext }]}>Version 3.4.0</Text>
+                    <Text style={[styles.modalVersion, { color: theme.colors.subtext }]}>Version 3.5.0</Text>
                     
                     <View style={[styles.modeContainer, { backgroundColor: theme.colors.background }]}>
                         <Text style={[styles.modeLabel, { color: theme.colors.text }]}>Planner Mode</Text>
                         <Switch
-                            trackColor={{ false: "#767577", true: "#81b0ff" }}
+                            trackColor={{ false: theme.colors.border, true: theme.colors.light }}
                             thumbColor={isPlannerMode ? theme.colors.primary : "#f4f3f4"}
-                            ios_backgroundColor="#3e3e3e"
+                            ios_backgroundColor={theme.colors.border}
                             onValueChange={toggleMode}
                             value={isPlannerMode}
                         />
@@ -126,10 +126,10 @@ const styles = StyleSheet.create({
         top: 15,
     },
     modalLogo: {
-        width: 80,
-        height: 80,
-        marginBottom: 15,
-        borderRadius: 16,
+        width: 256,
+        height: 256,
+        marginBottom: 2,
+        borderRadius: 5,
     },
     modalTitle: {
         fontSize: 22,
@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
         marginBottom: 25,
     },
     linksContainer: {
-        width: '100%',
+        width: '85%',
         gap: 10,
     },
     linkButton: {
