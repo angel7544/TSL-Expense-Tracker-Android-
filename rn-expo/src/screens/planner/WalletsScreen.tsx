@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useContext, useMemo, useRef } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Modal, TextInput, Alert, ScrollView, Animated, Pressable } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Modal, TextInput, Alert, Animated, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Store, Wallet } from '../../data/Store';
 import { UIContext } from '../../context/UIContext';
+import { AppHeader } from '../../components/AppHeader';
 
-const CARD_HEIGHT = 180;
+const CARD_HEIGHT = 190;
 
-const WalletCard = ({ item, stats, allTimeStats, theme, onEdit }: { item: Wallet, stats: { income: number, expense: number }, allTimeStats: { income: number, expense: number }, theme: any, onEdit: (w: Wallet) => void }) => {
+const WalletCard = ({ item, stats, allTimeStats, txCount, theme, onEdit }: { item: Wallet, stats: { income: number, expense: number }, allTimeStats: { income: number, expense: number }, txCount: number, theme: any, onEdit: (w: Wallet) => void }) => {
     const animatedValue = useRef(new Animated.Value(0)).current;
     const [flipped, setFlipped] = useState(false);
 
@@ -31,7 +32,6 @@ const WalletCard = ({ item, stats, allTimeStats, theme, onEdit }: { item: Wallet
 
     const isLiability = ['Credit Card', 'Loan', 'Liability'].includes(item.type);
     const effectiveValue = isLiability ? -item.balance : item.balance;
-    const isNegative = effectiveValue < 0;
 
     // Determine card color based on type
     const getCardColor = (type: string) => {
@@ -101,7 +101,7 @@ const WalletCard = ({ item, stats, allTimeStats, theme, onEdit }: { item: Wallet
         },
         balanceContainer: {
             alignItems: 'center',
-            marginVertical: 10,
+            marginVertical: 5,
         },
         balanceText: {
             color: '#fff',
@@ -132,7 +132,7 @@ const WalletCard = ({ item, stats, allTimeStats, theme, onEdit }: { item: Wallet
         },
         statValue: {
             color: '#fff',
-            fontSize: 16,
+            fontSize: 14,
             fontWeight: '800',
             textShadowColor: 'rgba(0,0,0,0.3)',
             textShadowOffset: { width: 0, height: 1 },
@@ -216,18 +216,21 @@ const WalletCard = ({ item, stats, allTimeStats, theme, onEdit }: { item: Wallet
                         {(isLiability && item.balance > 0) || (!isLiability && item.balance < 0) ? '-' : ''}
                         {theme.currencySymbol || '₹'}{Math.abs(item.balance).toFixed(2)}
                     </Text>
-                    {isLiability && <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12 }}>Current Debt</Text>}
+                    <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, marginTop: 4, fontWeight: '500' }}>
+                        {txCount} Total Transactions
+                    </Text>
+                    {isLiability && <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 2 }}>Current Debt</Text>}
                 </View>
 
                 <View style={styles.statsRow}>
                     <View style={styles.statItem}>
-                        <Text style={styles.statLabel}>Income This Month</Text>
-                        <Text style={styles.statValue}>+{theme.currencySymbol || '₹'}{stats.income.toFixed(2)}</Text>
+                        <Text style={styles.statLabel}>Income (Mo)</Text>
+                        <Text style={styles.statValue}>+{theme.currencySymbol || '₹'}{stats.income.toFixed(0)}</Text>
                     </View>
                     <View style={styles.divider} />
                     <View style={styles.statItem}>
-                        <Text style={styles.statLabel}>Expenses This Month</Text>
-                        <Text style={styles.statValue}>-{theme.currencySymbol || '₹'}{stats.expense.toFixed(2)}</Text>
+                        <Text style={styles.statLabel}>Expense (Mo)</Text>
+                        <Text style={styles.statValue}>-{theme.currencySymbol || '₹'}{stats.expense.toFixed(0)}</Text>
                     </View>
                 </View>
             </Animated.View>
@@ -239,12 +242,12 @@ const WalletCard = ({ item, stats, allTimeStats, theme, onEdit }: { item: Wallet
                 <View style={styles.backStatsRow}>
                      <View style={styles.backStatItem}>
                         <Text style={styles.backStatLabel}>Total Income</Text>
-                        <Text style={styles.backStatValue}>+{theme.currencySymbol || '₹'}{allTimeStats.income.toFixed(2)}</Text>
+                        <Text style={styles.backStatValue}>+{theme.currencySymbol || '₹'}{allTimeStats.income.toFixed(0)}</Text>
                     </View>
                     <View style={styles.backDivider} />
                     <View style={styles.backStatItem}>
                         <Text style={styles.backStatLabel}>Total Expense</Text>
-                        <Text style={styles.backStatValue}>-{theme.currencySymbol || '₹'}{allTimeStats.expense.toFixed(2)}</Text>
+                        <Text style={styles.backStatValue}>-{theme.currencySymbol || '₹'}{allTimeStats.expense.toFixed(0)}</Text>
                     </View>
                 </View>
 
@@ -279,6 +282,7 @@ export const WalletsScreen = () => {
     const [wallets, setWallets] = useState<Wallet[]>([]);
     const [stats, setStats] = useState<Record<number, { income: number, expense: number }>>({});
     const [allTimeStats, setAllTimeStats] = useState<Record<number, { income: number, expense: number }>>({});
+    const [txCounts, setTxCounts] = useState<Record<number, number>>({});
     
     const [modalVisible, setModalVisible] = useState(false);
     const [currentWallet, setCurrentWallet] = useState<Partial<Wallet>>({});
@@ -298,14 +302,18 @@ export const WalletsScreen = () => {
 
         const newStats: Record<number, { income: number, expense: number }> = {};
         const newAllTimeStats: Record<number, { income: number, expense: number }> = {};
+        const newTxCounts: Record<number, number> = {};
         
         await Promise.all(data.map(async (w) => {
             if (w.name) {
                 const s = await Store.getWalletStats(w.name, year, month);
                 const all = await Store.getAllTimeWalletStats(w.name);
+                const summary = await Store.summaryAsync({ wallet: w.name, year: 'All', month: 'All' });
+                
                 if (w.id) {
                     newStats[w.id] = s;
                     newAllTimeStats[w.id] = all;
+                    newTxCounts[w.id] = summary.count;
                 }
             }
         }));
@@ -313,6 +321,7 @@ export const WalletsScreen = () => {
         setWallets(data);
         setStats(newStats);
         setAllTimeStats(newAllTimeStats);
+        setTxCounts(newTxCounts);
     };
 
     const handleSave = async () => {
@@ -338,22 +347,22 @@ export const WalletsScreen = () => {
 
     return (
         <View style={styles.container}>
-            <View style={styles.header}>
-                <View>
-                    <Text style={styles.title}>Wallets</Text>
-                    <Text style={styles.subtitle}>Tap card to flip for options</Text>
-                </View>
-                <TouchableOpacity 
-                    onPress={() => { 
-                        setCurrentWallet({ type: 'Cash', balance: 0 }); 
-                        setCustomType("");
-                        setModalVisible(true); 
-                    }} 
-                    style={styles.addButton}
-                >
-                    <Ionicons name="add" size={24} color="#fff" />
-                </TouchableOpacity>
-            </View>
+            <AppHeader 
+                title="Wallets" 
+                subtitle="Tap card to flip for options"
+                rightAction={
+                    <TouchableOpacity 
+                        onPress={() => { 
+                            setCurrentWallet({ type: 'Cash', balance: 0 }); 
+                            setCustomType("");
+                            setModalVisible(true); 
+                        }} 
+                        style={[styles.addButton, { backgroundColor: theme.colors.primary }]}
+                    >
+                        <Ionicons name="add" size={24} color="#fff" />
+                    </TouchableOpacity>
+                }
+            />
 
             <FlatList
                 data={wallets}
@@ -362,6 +371,7 @@ export const WalletsScreen = () => {
                         item={item} 
                         stats={stats[item.id!] || { income: 0, expense: 0 }} 
                         allTimeStats={allTimeStats[item.id!] || { income: 0, expense: 0 }}
+                        txCount={txCounts[item.id!] || 0}
                         theme={theme}
                         onEdit={(w) => {
                             setCurrentWallet(w);
@@ -484,163 +494,139 @@ const getStyles = (theme: any) => StyleSheet.create({
         flex: 1,
         backgroundColor: theme.colors.background,
     },
-    header: {
-        padding: 24,
-        paddingTop: 60,
-        backgroundColor: theme.colors.card,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    title: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        color: theme.colors.text,
-    },
-    subtitle: {
-        fontSize: 14,
-        color: theme.colors.subtext,
-        marginTop: 4,
-    },
     addButton: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        backgroundColor: theme.colors.primary,
+        width: 36,
+        height: 36,
+        borderRadius: 10,
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: theme.colors.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 5,
     },
     emptyText: {
         textAlign: 'center',
         color: theme.colors.subtext,
-        marginTop: 60,
+        marginTop: 50,
         fontSize: 16,
     },
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.5)',
         justifyContent: 'center',
-        padding: 20,
+        alignItems: 'center',
     },
     modalContent: {
+        width: '90%',
         backgroundColor: theme.colors.card,
         borderRadius: 24,
         padding: 24,
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.2,
+        shadowOpacity: 0.25,
         shadowRadius: 20,
         elevation: 10,
     },
     modalTitle: {
-        fontSize: 22,
-        fontWeight: '800',
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: theme.colors.text,
         marginBottom: 20,
         textAlign: 'center',
-        color: theme.colors.text,
     },
     label: {
         fontSize: 14,
         fontWeight: '600',
         color: theme.colors.text,
         marginBottom: 8,
+        marginLeft: 4,
     },
     inputWrapper: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: theme.colors.input,
+        backgroundColor: theme.colors.background,
         borderRadius: 12,
+        paddingHorizontal: 16,
+        height: 50,
+        marginBottom: 16,
         borderWidth: 1,
         borderColor: theme.colors.border,
-        marginBottom: 20,
-        paddingHorizontal: 12,
-        height: 50,
     },
     input: {
         flex: 1,
         marginLeft: 10,
-        fontSize: 16,
         color: theme.colors.text,
-        height: '100%',
-    },
-    currencySymbol: {
-        fontSize: 18,
-        color: theme.colors.subtext,
-        fontWeight: '600',
+        fontSize: 16,
     },
     chipContainer: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        marginBottom: 20,
+        marginBottom: 16,
+        gap: 8,
     },
     chip: {
         paddingHorizontal: 12,
         paddingVertical: 8,
         borderRadius: 20,
-        backgroundColor: theme.colors.input,
-        marginRight: 8,
-        marginBottom: 8,
         borderWidth: 1,
         borderColor: theme.colors.border,
+        backgroundColor: theme.colors.background,
     },
     chipText: {
-        fontSize: 14,
+        fontSize: 13,
         color: theme.colors.subtext,
         fontWeight: '500',
     },
     chipTextSelected: {
         color: '#fff',
-        fontWeight: '600',
     },
-    modalButtons: {
-        flexDirection: 'row',
-        marginTop: 10,
-    },
-    cancelButton: {
-        flex: 1,
-        padding: 14,
-        borderRadius: 12,
-        backgroundColor: theme.colors.input,
-        marginRight: 10,
-        alignItems: 'center',
-    },
-    cancelButtonText: {
-        color: theme.colors.subtext,
-        fontWeight: '600',
-    },
-    saveButton: {
-        flex: 1.5,
-        padding: 14,
-        borderRadius: 12,
-        backgroundColor: theme.colors.primary,
-        alignItems: 'center',
-        shadowColor: theme.colors.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-        elevation: 4,
-    },
-    saveButtonText: {
-        color: '#fff',
-        fontWeight: '700',
+    currencySymbol: {
+        fontSize: 18,
+        color: theme.colors.text,
+        fontWeight: 'bold',
     },
     infoBox: {
         flexDirection: 'row',
-        backgroundColor: theme.colors.input,
-        padding: 10,
-        borderRadius: 8,
+        backgroundColor: theme.colors.primary + '15',
+        padding: 12,
+        borderRadius: 12,
         marginBottom: 20,
         alignItems: 'center',
     },
     infoText: {
         fontSize: 12,
-        color: theme.colors.subtext,
+        color: theme.colors.text,
         marginLeft: 8,
         flex: 1,
-    }
+    },
+    modalButtons: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    cancelButton: {
+        flex: 1,
+        padding: 16,
+        borderRadius: 16,
+        backgroundColor: theme.colors.background,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+    },
+    cancelButtonText: {
+        color: theme.colors.text,
+        fontWeight: '600',
+    },
+    saveButton: {
+        flex: 1,
+        padding: 16,
+        borderRadius: 16,
+        backgroundColor: theme.colors.primary,
+        alignItems: 'center',
+        shadowColor: theme.colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    saveButtonText: {
+        color: '#fff',
+        fontWeight: 'bold',
+    },
 });

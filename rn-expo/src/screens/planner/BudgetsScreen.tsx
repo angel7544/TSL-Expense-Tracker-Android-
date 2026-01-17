@@ -11,6 +11,7 @@ export const BudgetsScreen = () => {
     const [actuals, setActuals] = useState<Record<string, number>>({});
     const [year, setYear] = useState(new Date().getFullYear().toString());
     const [month, setMonth] = useState((new Date().getMonth() + 1).toString().padStart(2, '0'));
+    const [activeTab, setActiveTab] = useState<'monthly' | 'yearly' | 'weekly'>('monthly');
     
     const [modalVisible, setModalVisible] = useState(false);
     const [currentBudget, setCurrentBudget] = useState<Partial<Budget>>({});
@@ -23,21 +24,43 @@ export const BudgetsScreen = () => {
         loadData();
         const unsub = Store.subscribe(loadData);
         return unsub;
-    }, [year, month]);
+    }, [year, month, activeTab]);
 
     const loadData = async () => {
-        const [budgetsData, cats, totals, records] = await Promise.all([
-            Store.getBudgets(year, month),
-            Store.getUniqueValues('expense_category'),
-            Store.getCategoryTotals(year, month, 'expense'),
-            Store.list({ year, month })
-        ]);
+        let budgetsData: Budget[] = [];
+        let totals: {category: string, amount: number}[] = [];
+        let records: any[] = [];
+        let cats: string[] = [];
+
+        // 1. Get Budgets & Totals based on Tab
+        if (activeTab === 'yearly') {
+             budgetsData = await Store.getBudgets(year, month, 'yearly');
+             totals = await Store.getCategoryTotals(year, 'All', 'expense');
+             records = await Store.list({ year, month: 'All' });
+        } else if (activeTab === 'weekly') {
+             budgetsData = await Store.getBudgets(year, month, 'weekly');
+             totals = await Store.getCategoryTotals(year, month, 'expense');
+             records = await Store.list({ year, month });
+        } else {
+             budgetsData = await Store.getBudgets(year, month, 'monthly');
+             totals = await Store.getCategoryTotals(year, month, 'expense');
+             records = await Store.list({ year, month });
+        }
+
+        cats = await Store.getUniqueValues('expense_category');
         
         setBudgets(budgetsData);
         setCategories(cats);
         
         const acts: Record<string, number> = {};
-        totals.forEach(t => acts[t.category] = t.amount);
+        totals.forEach(t => {
+            if (activeTab === 'weekly') {
+                // Approximate weekly spend from monthly total
+                acts[t.category] = t.amount / 4.3; 
+            } else {
+                acts[t.category] = t.amount;
+            }
+        });
         setActuals(acts);
 
         const sStatus: Record<number, number> = {};
@@ -65,16 +88,16 @@ export const BudgetsScreen = () => {
             id: currentBudget.id,
             category: currentBudget.category,
             amount: Number(currentBudget.amount),
-            period: 'monthly',
+            period: currentBudget.period || 'monthly',
             month: month,
             year: year
         });
         
         let budId = currentBudget.id;
         if (!budId) {
-            const updated = await Store.getBudgets(year, month);
+            const updated = await Store.getBudgets(year, month, currentBudget.period || 'monthly');
             const match = updated
-                .filter(b => b.category === currentBudget.category && Number(b.amount) === Number(currentBudget.amount) && b.period === 'monthly' && b.month === month)
+                .filter(b => b.category === currentBudget.category && Number(b.amount) === Number(currentBudget.amount) && b.period === (currentBudget.period || 'monthly'))
                 .sort((a, b) => (b.id || 0) - (a.id || 0))[0];
             budId = match?.id;
         }
@@ -174,7 +197,7 @@ export const BudgetsScreen = () => {
             <View style={styles.header}>
                 <View>
                     <Text style={styles.title}>Budgets</Text>
-                    <Text style={styles.subtitle}>{month}/{year}</Text>
+                    <Text style={styles.subtitle}>{activeTab === 'yearly' ? year : `${month}/${year}`}</Text>
                 </View>
                 <View style={styles.headerActions}>
                     <TouchableOpacity onPress={() => Store.setAppMode('finance')} style={styles.toggleButton}>
@@ -182,7 +205,7 @@ export const BudgetsScreen = () => {
                     </TouchableOpacity>
                     <TouchableOpacity 
                         onPress={() => { 
-                            setCurrentBudget({ category: categories[0] || "" }); 
+                            setCurrentBudget({ category: categories[0] || "", period: activeTab }); 
                             setCurrentSplits([]);
                             setModalVisible(true); 
                         }} 
@@ -192,13 +215,53 @@ export const BudgetsScreen = () => {
                     </TouchableOpacity>
                 </View>
             </View>
+            
+            <View style={{ flexDirection: 'row', paddingHorizontal: 16, paddingBottom: 16, backgroundColor: theme.colors.card }}>
+                 {(['monthly', 'yearly', 'weekly'] as const).map(tab => (
+                    <TouchableOpacity 
+                        key={tab} 
+                        style={{
+                            marginRight: 12,
+                            paddingVertical: 6,
+                            paddingHorizontal: 16,
+                            borderRadius: 20,
+                            backgroundColor: activeTab === tab ? theme.colors.primary : theme.colors.background,
+                            borderWidth: 1,
+                            borderColor: activeTab === tab ? theme.colors.primary : theme.colors.border
+                        }}
+                        onPress={() => setActiveTab(tab)}
+                    >
+                        <Text style={{ 
+                            color: activeTab === tab ? '#fff' : theme.colors.text,
+                            fontWeight: '600',
+                            fontSize: 14
+                        }}>
+                            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                        </Text>
+                    </TouchableOpacity>
+                ))}
+            </View>
 
             <FlatList
                 data={budgets}
                 renderItem={renderItem}
                 keyExtractor={item => item.id?.toString() || Math.random().toString()}
                 contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
-                ListEmptyComponent={<Text style={styles.emptyText}>No budgets set for this month.</Text>}
+                ListEmptyComponent={<Text style={styles.emptyText}>No budgets set for this period.</Text>}
+                ListHeaderComponent={() => (
+                    <View style={{ marginBottom: 10 }}>
+                        {activeTab === 'weekly' && (
+                            <Text style={{ fontSize: 12, color: theme.colors.subtext, fontStyle: 'italic', textAlign: 'center' }}>
+                                Weekly spending is estimated as (Monthly Total / 4.3)
+                            </Text>
+                        )}
+                        {activeTab === 'yearly' && (
+                            <Text style={{ fontSize: 12, color: theme.colors.subtext, fontStyle: 'italic', textAlign: 'center' }}>
+                                Showing total spending for {year}
+                            </Text>
+                        )}
+                    </View>
+                )}
             />
 
             <Modal visible={modalVisible} animationType="fade" transparent>
@@ -235,6 +298,27 @@ export const BudgetsScreen = () => {
                                 value={currentBudget.category}
                                 onChangeText={t => setCurrentBudget({ ...currentBudget, category: t })}
                             />
+                        </View>
+
+                        <Text style={styles.label}>Period</Text>
+                        <View style={{ flexDirection: 'row', marginBottom: 20 }}>
+                            {(['monthly', 'yearly', 'weekly'] as const).map(p => (
+                                <TouchableOpacity
+                                    key={p}
+                                    style={[
+                                        styles.chip,
+                                        currentBudget.period === p && { backgroundColor: theme.colors.primary }
+                                    ]}
+                                    onPress={() => setCurrentBudget({ ...currentBudget, period: p })}
+                                >
+                                    <Text style={[
+                                        styles.chipText,
+                                        currentBudget.period === p && styles.chipTextSelected
+                                    ]}>
+                                        {p.charAt(0).toUpperCase() + p.slice(1)}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
                         </View>
 
                         <Text style={styles.label}>Amount Limit</Text>

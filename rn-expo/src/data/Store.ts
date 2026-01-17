@@ -6,7 +6,7 @@ export interface Budget {
   id?: number;
   category: string;
   amount: number;
-  period: 'monthly' | 'yearly';
+  period: 'monthly' | 'yearly' | 'weekly';
   month?: string; // "01", "02" etc.
   year: string; // "2024"
 }
@@ -116,6 +116,7 @@ export interface FilterOptions {
     month?: string;
     category?: string;
     merchant?: string;
+    wallet?: string;
 }
 
 const defaultSettings: Settings = {
@@ -702,6 +703,7 @@ export const Store = {
         }
         if (filters?.category && filters.category !== "All") d = d.filter(x => x.expense_category === filters.category);
         if (filters?.merchant && filters.merchant !== "All") d = d.filter(x => x.merchant_name === filters.merchant);
+        if (filters?.wallet) d = d.filter(x => x.paid_through === filters.wallet);
         
         d = d.map(x => ({ ...x, bal: toBal(x) })).sort((a, b) => new Date(b.expense_date).getTime() - new Date(a.expense_date).getTime());
         resolve(d);
@@ -729,6 +731,10 @@ export const Store = {
         if (filters?.merchant && filters.merchant !== "All") {
            query += " AND merchant_name = ?";
            args.push(filters.merchant!);
+        }
+        if (filters?.wallet) {
+           query += " AND paid_through = ?";
+           args.push(filters.wallet);
         }
         
         query += " ORDER BY expense_date DESC";
@@ -1143,13 +1149,27 @@ export const Store = {
   },
 
   // --- Budgets ---
-  async getBudgets(year: string, month: string): Promise<Budget[]> {
+  async getBudgets(year: string, month: string, period?: 'monthly' | 'yearly' | 'weekly'): Promise<Budget[]> {
       if (Platform.OS === 'web' || !db) return [];
       try {
-          return await db.getAllAsync<Budget>(
-              "SELECT * FROM budgets WHERE year = ? AND (period = 'yearly' OR (period = 'monthly' AND month = ?))",
-              [year, month]
-          );
+          let query = "SELECT * FROM budgets WHERE year = ?";
+          const args: string[] = [year];
+
+          if (period === 'yearly') {
+              query += " AND period = 'yearly'";
+          } else if (period === 'monthly') {
+              query += " AND period = 'monthly' AND month = ?";
+              args.push(month);
+          } else if (period === 'weekly') {
+              // Weekly budgets apply to the whole year (not tied to a specific month)
+              query += " AND period = 'weekly'";
+          } else {
+              // Default: yearly + weekly + monthly for this month
+              query += " AND (period = 'yearly' OR period = 'weekly' OR (period = 'monthly' AND month = ?))";
+              args.push(month);
+          }
+
+          return await db.getAllAsync<Budget>(query, args);
       } catch (e) { console.error("getBudgets", e); return []; }
   },
 

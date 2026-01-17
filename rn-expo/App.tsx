@@ -17,6 +17,7 @@ import { UIContext } from "./src/context/UIContext";
 import BackupScreen from "./src/screens/BackupScreen";
 import LockScreen from "./src/screens/LockScreen";
 import { PlannerNavigator } from "./src/screens/planner/PlannerNavigator";
+import { WalletsScreen } from "./src/screens/planner/WalletsScreen";
 import { NotificationService } from "./src/services/NotificationService";
 import OnboardingScreen from "./src/screens/OnboardingScreen";
 import { BlurView } from "expo-blur";
@@ -360,6 +361,14 @@ export default function App() {
                                 component={ChartsScreen}
                                 options={{
                                     tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "pie-chart" : "pie-chart-outline"} size={24} color={color} />
+                                }}
+                            />
+
+                            <Tab.Screen
+                                name="Wallets"
+                                component={WalletsScreen}
+                                options={{
+                                    tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "card" : "card-outline"} size={24} color={color} />
                                 }}
                             />
 

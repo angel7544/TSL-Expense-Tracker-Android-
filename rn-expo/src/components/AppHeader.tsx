@@ -14,7 +14,7 @@ import { InputModal } from "./InputModal";
 import { InfoModal } from "./InfoModal";
 import { UIContext } from "../context/UIContext";
 
-export const AppHeader = ({ title, subtitle, showCreateDB = false }: { title?: string, subtitle?: string, showCreateDB?: boolean }) => {
+export const AppHeader = ({ title, subtitle, showCreateDB = false, rightAction }: { title?: string, subtitle?: string, showCreateDB?: boolean, rightAction?: React.ReactNode }) => {
   const { theme } = useContext(UIContext);
   const [modalVisible, setModalVisible] = useState(false);
   const [logoUri, setLogoUri] = useState<string | null>(null);
@@ -197,6 +197,7 @@ export const AppHeader = ({ title, subtitle, showCreateDB = false }: { title?: s
       </View>
 
       <View style={styles.rightRow}>
+        {rightAction}
         {showCreateDB && (
             <TouchableOpacity onPress={() => setNewFileModalVisible(true)} style={[styles.iconButton, { backgroundColor: theme.mode === 'dark' ? '#374151' : '#F3F4F6' }]}>
                 <Ionicons name="add" size={20} color={theme.colors.primary} />
