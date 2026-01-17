@@ -18,6 +18,7 @@ import BackupScreen from "./src/screens/BackupScreen";
 import LockScreen from "./src/screens/LockScreen";
 import { PlannerNavigator } from "./src/screens/planner/PlannerNavigator";
 import { WalletsScreen } from "./src/screens/planner/WalletsScreen";
+import { DebtsScreen } from "./src/screens/planner/DebtsScreen";
 import { NotificationService } from "./src/services/NotificationService";
 import OnboardingScreen from "./src/screens/OnboardingScreen";
 import { BlurView } from "expo-blur";
@@ -103,6 +104,7 @@ function MyTabBar({ state, descriptors, navigation, onAddPress, navbarStyle, the
                     paddingHorizontal: 10,
                 }}>
                     {state.routes.map((route: any, index: number) => {
+                        if (route.name === 'Debts') return null;
                         const { options } = descriptors[route.key];
                         const isFocused = state.index === index;
                         const onPress = () => {
@@ -170,6 +172,7 @@ function MyTabBar({ state, descriptors, navigation, onAddPress, navbarStyle, the
         justifyContent: 'space-between',
       }}>
         {state.routes.map((route: any, index: number) => {
+            if (route.name === 'Debts') return null;
             // Logic to render Home, then Add, then others
             // Routes: Home (0), Charts (1), List (2), Report (3), Settings (4), Backup (5)
             // We want Add between Home and Charts.
@@ -361,6 +364,14 @@ export default function App() {
                                 component={ChartsScreen}
                                 options={{
                                     tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "pie-chart" : "pie-chart-outline"} size={24} color={color} />
+                                }}
+                            />
+
+                            <Tab.Screen
+                                name="Debts"
+                                component={DebtsScreen}
+                                options={{
+                                    tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "cash" : "cash-outline"} size={24} color={color} />
                                 }}
                             />
 

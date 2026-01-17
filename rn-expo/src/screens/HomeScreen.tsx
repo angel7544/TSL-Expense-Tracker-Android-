@@ -266,6 +266,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginBottom: 24, paddingHorizontal: 16 }}>
             {[
                 { name: 'Budgets', route: 'Budgets', icon: 'wallet', color: '#4F46E5' },
+                { name: 'Debts', route: 'Debts', icon: 'cash', color: '#EC4899' },
                 { name: 'Todos', route: 'Todos', icon: 'checkbox', color: '#10B981' },
                 { name: 'Notes', route: 'Notes', icon: 'document-text', color: '#F59E0B' },
                 { name: 'Invoices', route: 'Invoices', icon: 'receipt', color: '#EF4444' },
@@ -274,8 +275,12 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                     key={item.name} 
                     style={{ alignItems: 'center' }} 
                     onPress={() => {
-                        Store.plannerInitialRoute = item.route;
-                        Store.setAppMode('planner');
+                        if (item.route === 'Debts') {
+                            navigation.navigate('Debts');
+                        } else {
+                            Store.plannerInitialRoute = item.route;
+                            Store.setAppMode('planner');
+                        }
                     }}
                 >
                     <View style={{ 

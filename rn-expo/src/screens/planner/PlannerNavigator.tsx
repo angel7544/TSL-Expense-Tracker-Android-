@@ -6,7 +6,6 @@ import { Store } from '../../data/Store';
 import HomeScreen from '../HomeScreen';
 import SettingsScreen from '../SettingsScreen';
 import { BudgetsScreen } from './BudgetsScreen';
-import { WalletsScreen } from './WalletsScreen';
 import { TodosScreen } from './TodosScreen';
 import { NotesScreen } from './NotesScreen';
 import { InvoicesScreen } from './InvoicesScreen';
@@ -147,13 +146,6 @@ export const PlannerNavigator = () => {
                 component={BudgetsScreen} 
                 options={{
                     tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "pie-chart" : "pie-chart-outline"} size={20} color={color} />
-                }}
-            />
-            <Tab.Screen 
-                name="Wallets" 
-                component={WalletsScreen} 
-                options={{
-                    tabBarIcon: ({ focused, color }) => <Ionicons name={focused ? "wallet" : "wallet-outline"} size={20} color={color} />
                 }}
             />
             <Tab.Screen 

@@ -149,11 +149,22 @@ function toBal(r: ExpenseRecord) {
   return Number(r.income_amount || 0) - Number(r.expense_amount || 0);
 }
 
-// In-memory fallback for web
-let webRecords: ExpenseRecord[] = [];
+export interface Debt {
+  id?: number;
+  type: 'borrowed' | 'lent';
+  person: string;
+  amount: number;
+  date: string;
+  time: string;
+  color: string;
+  description: string;
+  wallet_id?: number;
+  is_settled: boolean;
+}
 
-// Open database safely
 let db: SQLite.SQLiteDatabase | null = null;
+let globalDb: SQLite.SQLiteDatabase | null = null;
+let webRecords: ExpenseRecord[] = [];
 if (Platform.OS !== 'web') {
   db = SQLite.openDatabaseSync("tsl_expenses.db");
 }
@@ -218,7 +229,37 @@ export const Store = {
     this.listeners.forEach(l => l());
   },
   
+  async initGlobalDB() {
+      if (Platform.OS === 'web') return;
+      try {
+          globalDb = await SQLite.openDatabaseAsync('global_store.db');
+          await globalDb.execAsync(`
+              CREATE TABLE IF NOT EXISTS wallets (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  name TEXT,
+                  type TEXT,
+                  balance REAL
+              );
+              CREATE TABLE IF NOT EXISTS debts (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  type TEXT,
+                  person TEXT,
+                  amount REAL,
+                  date TEXT,
+                  time TEXT,
+                  color TEXT,
+                  description TEXT,
+                  wallet_id INTEGER,
+                  is_settled INTEGER
+              );
+          `);
+      } catch (e) {
+          console.error("Global DB Init Error", e);
+      }
+  },
+
   async init() {
+    await this.initGlobalDB();
     this.settings = { ...defaultSettings };
     await this.loadSettings();
     await this.loadAuthState();
@@ -815,22 +856,22 @@ export const Store = {
 
   // --- Wallets ---
   async getWallets(): Promise<Wallet[]> {
-      if (Platform.OS === 'web' || !db) return [];
+      if (Platform.OS === 'web' || !globalDb) return [];
       try {
-          return await db.getAllAsync<Wallet>("SELECT * FROM wallets ORDER BY name ASC");
+          return await globalDb.getAllAsync<Wallet>("SELECT * FROM wallets ORDER BY name ASC");
       } catch (e) { console.error("getWallets", e); return []; }
   },
 
   async saveWallet(wallet: Wallet) {
-      if (Platform.OS === 'web' || !db) return;
+      if (Platform.OS === 'web' || !globalDb) return;
       try {
           if (wallet.id) {
-              await db.runAsync(
+              await globalDb.runAsync(
                   "UPDATE wallets SET name = ?, type = ?, balance = ? WHERE id = ?",
                   [wallet.name, wallet.type, wallet.balance, wallet.id]
               );
           } else {
-              await db.runAsync(
+              await globalDb.runAsync(
                   "INSERT INTO wallets (name, type, balance) VALUES (?, ?, ?)",
                   [wallet.name, wallet.type, wallet.balance]
               );
@@ -840,17 +881,17 @@ export const Store = {
   },
 
   async deleteWallet(id: number) {
-      if (Platform.OS === 'web' || !db) return;
+      if (Platform.OS === 'web' || !globalDb) return;
       try {
-          await db.runAsync("DELETE FROM wallets WHERE id = ?", [id]);
+          await globalDb.runAsync("DELETE FROM wallets WHERE id = ?", [id]);
           this.notify();
       } catch (e) { console.error("deleteWallet", e); }
   },
 
   async updateWalletBalance(walletName: string, amountChange: number, isExpense: boolean) {
-      if (Platform.OS === 'web' || !db || amountChange === 0) return;
+      if (Platform.OS === 'web' || !globalDb || amountChange === 0) return;
       try {
-          const wallets = await db.getAllAsync<Wallet>("SELECT * FROM wallets WHERE name = ?", [walletName]);
+          const wallets = await globalDb.getAllAsync<Wallet>("SELECT * FROM wallets WHERE name = ?", [walletName]);
           if (wallets.length > 0) {
               const wallet = wallets[0];
               let newBalance = wallet.balance;
@@ -874,10 +915,55 @@ export const Store = {
               }
 
               if (wallet.id) {
-                  await db.runAsync("UPDATE wallets SET balance = ? WHERE id = ?", [newBalance, wallet.id]);
+                  await globalDb.runAsync("UPDATE wallets SET balance = ? WHERE id = ?", [newBalance, wallet.id]);
+                  this.notify();
               }
           }
       } catch (e) { console.error("updateWalletBalance", e); }
+  },
+
+  // --- Debts ---
+  async getDebts(): Promise<Debt[]> {
+      if (Platform.OS === 'web' || !globalDb) return [];
+      try {
+          return await globalDb.getAllAsync<Debt>("SELECT * FROM debts ORDER BY date DESC, time DESC");
+      } catch (e) { console.error("getDebts", e); return []; }
+  },
+
+  async saveDebt(debt: Debt) {
+      if (Platform.OS === 'web' || !globalDb) return;
+      try {
+          if (debt.id) {
+              await globalDb.runAsync(
+                  "UPDATE debts SET type = ?, person = ?, amount = ?, date = ?, time = ?, color = ?, description = ?, wallet_id = ?, is_settled = ? WHERE id = ?",
+                  [debt.type, debt.person, debt.amount, debt.date, debt.time, debt.color, debt.description, debt.wallet_id || null, debt.is_settled ? 1 : 0, debt.id]
+              );
+          } else {
+              await globalDb.runAsync(
+                  "INSERT INTO debts (type, person, amount, date, time, color, description, wallet_id, is_settled) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                  [debt.type, debt.person, debt.amount, debt.date, debt.time, debt.color, debt.description, debt.wallet_id || null, debt.is_settled ? 1 : 0]
+              );
+              
+              // Update Wallet Balance for new debts
+              if (debt.wallet_id) {
+                  const wallets = await globalDb.getAllAsync<Wallet>("SELECT * FROM wallets WHERE id = ?", [debt.wallet_id]);
+                  if (wallets.length > 0) {
+                      const isBorrow = debt.type === 'borrowed';
+                      // Borrow -> Income (isExpense=false), Lend -> Expense (isExpense=true)
+                      await this.updateWalletBalance(wallets[0].name, debt.amount, !isBorrow); 
+                  }
+              }
+          }
+          this.notify();
+      } catch (e) { console.error("saveDebt", e); }
+  },
+
+  async deleteDebt(id: number) {
+      if (Platform.OS === 'web' || !globalDb) return;
+      try {
+          await globalDb.runAsync("DELETE FROM debts WHERE id = ?", [id]);
+          this.notify();
+      } catch (e) { console.error("deleteDebt", e); }
   },
 
   async getWalletStats(walletName: string, year: string, month: string): Promise<{ income: number, expense: number }> {
